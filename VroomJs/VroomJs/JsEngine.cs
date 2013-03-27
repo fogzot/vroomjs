@@ -80,56 +80,56 @@ namespace VroomJs
 
         object JsValueToObject(JsValue v)
         {
-            switch (v.type) 
+            switch (v.Type) 
             {
-                case JsValue.TYPE_NULL:
+                case JsValueType.Null:
                     return null;
 
-                case JsValue.TYPE_OBJECT:
+                case JsValueType.Object:
                     return null;
 
-                case JsValue.TYPE_WRAPPED:
+                case JsValueType.Wrapped:
                     return null;
 
-                case JsValue.TYPE_BOOLEAN:
-                    return v.i32 != 0;
+                case JsValueType.Boolean:
+                    return v.I32 != 0;
 
-                case JsValue.TYPE_INTEGER:
-                    return v.i32;
+                case JsValueType.Integer:
+                    return v.I32;
 
-                case JsValue.TYPE_NUMBER:
-                    return v.num;
+                case JsValueType.Number:
+                    return v.Num;
 
-                case JsValue.TYPE_STRING:
+                case JsValueType.String:
                     return Marshal.PtrToStringUni(v.ptr);
 
-                case JsValue.TYPE_DATE:
+                case JsValueType.Date:
                     // The formula (v.num * 10000) + 621355968000000000L was taken from a StackOverflow
                     // question and should be OK. Then why do we need to compensate by -26748000000000L
                     // (a value determined from the failing tests)?!
-                    return new DateTime((long)(v.num * 10000) + 621355968000000000L - 26748000000000L);
+                    return new DateTime((long)(v.Num * 10000) + 621355968000000000L - 26748000000000L);
 
-                case JsValue.TYPE_ARRAY: {
-                    var r = new object[v.length];
-                    for (int i=0 ; i < v.length ; i++) {
+                case JsValueType.Array: {
+                    var r = new object[v.Length];
+                    for (int i=0 ; i < v.Length ; i++) {
                         var vi =(JsValue)Marshal.PtrToStructure((v.ptr + 16*i), typeof(JsValue));
                         r[i] = JsValueToObject(vi);
                     }
                     return r;
                 }
                     
-                case JsValue.TYPE_ERROR:
+                case JsValueType.Error:
                     return new JsException(Marshal.PtrToStringUni(v.ptr));
                     
                 default:
-                    throw new InvalidOperationException("unknown type code: " + v.type);
+                    throw new InvalidOperationException("unknown type code: " + v.Type);
             }           
         }
 
         JsValue ObjectToJsValue(object obj)
         {
             if (obj == null)
-                return new JsValue { type = JsValue.TYPE_NULL };
+                return new JsValue { Type = JsValueType.Null };
 
             Type type = obj.GetType();
 
@@ -139,38 +139,38 @@ namespace VroomJs
                 type = type.GetGenericArguments()[0];
 
             if (type == typeof(Boolean))
-                return new JsValue { type = JsValue.TYPE_BOOLEAN, i32 = (bool)obj ? 1 : 0 };
+                return new JsValue { Type = JsValueType.Boolean, I32 = (bool)obj ? 1 : 0 };
 
             if (type == typeof(String))
-                return new JsValue { type = JsValue.TYPE_STRING, ptr = Marshal.StringToHGlobalUni((string)obj) };
+                return new JsValue { Type = JsValueType.String, ptr = Marshal.StringToHGlobalUni((string)obj) };
             if (type == typeof(Char))
-                return new JsValue { type = JsValue.TYPE_STRING, ptr = Marshal.StringToHGlobalUni(obj.ToString()) };
+                return new JsValue { Type = JsValueType.String, ptr = Marshal.StringToHGlobalUni(obj.ToString()) };
 
             if (type == typeof(Byte))
-                return new JsValue { type = JsValue.TYPE_INTEGER, i32 = (int)(Byte)obj };
+                return new JsValue { Type = JsValueType.Integer, I32 = (int)(Byte)obj };
             if (type == typeof(Int16))
-                return new JsValue { type = JsValue.TYPE_INTEGER, i32 = (int)(Int16)obj };
+                return new JsValue { Type = JsValueType.Integer, I32 = (int)(Int16)obj };
             if (type == typeof(UInt16))
-                return new JsValue { type = JsValue.TYPE_INTEGER, i32 = (int)(UInt16)obj };
+                return new JsValue { Type = JsValueType.Integer, I32 = (int)(UInt16)obj };
             if (type == typeof(Int32))
-                return new JsValue { type = JsValue.TYPE_INTEGER, i32 = (int)obj };
+                return new JsValue { Type = JsValueType.Integer, I32 = (int)obj };
             if (type == typeof(UInt32))
-                return new JsValue { type = JsValue.TYPE_INTEGER, i32 = (int)(UInt32)obj };
+                return new JsValue { Type = JsValueType.Integer, I32 = (int)(UInt32)obj };
 
             if (type == typeof(Int64))
-                return new JsValue { type = JsValue.TYPE_NUMBER, num = (double)(Int64)obj };
+                return new JsValue { Type = JsValueType.Number, Num = (double)(Int64)obj };
             if (type == typeof(UInt64))
-                return new JsValue { type = JsValue.TYPE_NUMBER, num = (double)(UInt64)obj };
+                return new JsValue { Type = JsValueType.Number, Num = (double)(UInt64)obj };
             if (type == typeof(Single))
-                return new JsValue { type = JsValue.TYPE_NUMBER, num = (double)(Single)obj };
+                return new JsValue { Type = JsValueType.Number, Num = (double)(Single)obj };
             if (type == typeof(Double))
-                return new JsValue { type = JsValue.TYPE_NUMBER, num = (double)obj };
+                return new JsValue { Type = JsValueType.Number, Num = (double)obj };
             if (type == typeof(Decimal))
-                return new JsValue { type = JsValue.TYPE_NUMBER, num = (double)(Decimal)obj };
+                return new JsValue { Type = JsValueType.Number, Num = (double)(Decimal)obj };
 
             if (type == typeof(DateTime))
-                return new JsValue { type = JsValue.TYPE_DATE, 
-                                      num = ((DateTime)obj).ToUniversalTime().Ticks/10000.0 - 621355968000000000.0 + 26748000000000.0 };
+                return new JsValue { Type = JsValueType.Date, 
+                                      Num = ((DateTime)obj).ToUniversalTime().Ticks/10000.0 - 621355968000000000.0 + 26748000000000.0 };
 
             throw new InvalidOperationException("can't marshal type to Javascript engine: " + type);
         }

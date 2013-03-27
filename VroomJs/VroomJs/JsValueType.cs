@@ -28,18 +28,17 @@ using System.Runtime.InteropServices;
 
 namespace VroomJs
 { 
-    [StructLayout(LayoutKind.Explicit)]
-	struct JsValue
+	enum JsValueType
 	{
-        [FieldOffset(0)] public int    I32;
-        [FieldOffset(0)] public long   I64;
-        [FieldOffset(0)] public double Num;
-        [FieldOffset(0)] public IntPtr ptr;
-
-        // See JsValueType, marshaled as integer.
-        [FieldOffset(8)] public JsValueType Type;
-
-        // Length of array or string.
-        [FieldOffset(12)] public int Length;
+        Error = -1,
+        Null = 0,
+        Boolean = 1,
+        Integer = 2,
+        Number = 3,
+        String = 4,
+        Date = 5,
+        Array = 13,
+        Object = 14,
+        Wrapped = 15
     }
 }
