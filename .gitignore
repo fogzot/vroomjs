@@ -1,0 +1,8 @@
+*~
+*.pidb
+*.userprefs
+*.config
+*.usertasks
+*.swp
+build/
+test-results/
