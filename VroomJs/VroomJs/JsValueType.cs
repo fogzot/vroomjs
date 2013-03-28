@@ -38,7 +38,7 @@ namespace VroomJs
         String = 4,
         Date = 5,
         Array = 13,
-        Object = 14,
+        Managed = 14,
         Wrapped = 15
     }
 }

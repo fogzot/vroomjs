@@ -24,6 +24,7 @@
 // THE SOFTWARE.
 
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace VroomJs
@@ -31,7 +32,10 @@ namespace VroomJs
 	public class JsEngine : IDisposable
 	{
         [DllImport("vroomjs")]
-        static extern IntPtr jsengine_new();
+        static extern IntPtr jsengine_new(
+            Delegate keepalive_remove,
+            Delegate keepalive_get_property_value
+            );
 
         [DllImport("vroomjs")]
         static extern void jsengine_dispose(HandleRef engine);
@@ -40,17 +44,26 @@ namespace VroomJs
         static extern JsValue jsengine_execute(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string str);
 
         [DllImport("vroomjs")]
-        static extern void jsengine_set(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value);
+        static extern void jsengine_set_value(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value);
 
         [DllImport("vroomjs")]
-        static extern void jsengine_free(JsValue value);
+        static extern void jsvalue_dispose(JsValue value);
 
         public JsEngine()
 		{
-            _engine = new HandleRef(this, jsengine_new());
+            _keepalives = new List<object>();
+            _keepalive_remove = new Action<int>(KeepAliveRemove);
+            _keepalive_get_property_value = new Func<int,string,JsValue>(KeepAliveGetPropertyValue);
+
+            _engine = new HandleRef(this, jsengine_new(_keepalive_remove, _keepalive_get_property_value));
 		}
 
         HandleRef _engine;
+        List<object> _keepalives;
+
+        // Make sure the delegates we pass to the C++ engine won't fly away during a GC.
+        Delegate _keepalive_remove;
+        Delegate _keepalive_get_property_value;
 
         public object Execute(string code)
         {
@@ -61,7 +74,7 @@ namespace VroomJs
 
             JsValue v = jsengine_execute(_engine, code);
             object res = JsValueToObject(v);
-            jsengine_free(v);
+            jsvalue_dispose(v);
 
             if (res is Exception)
                 throw (Exception)res;
@@ -75,7 +88,24 @@ namespace VroomJs
 
             CheckDisposed();
 
-            jsengine_set(_engine, name, ObjectToJsValue(value));
+            jsengine_set_value(_engine, name, ObjectToJsValue(value));
+        }
+
+        void KeepAliveRemove(int slot)
+        {
+            Console.WriteLine("REMOVING SLOT: " + slot);
+            if (_keepalives.Count > slot) {
+                IDisposable disposable = _keepalives[slot] as IDisposable;
+                if (disposable != null)
+                    disposable.Dispose();
+                _keepalives[slot] = null;
+            }
+        }
+
+        JsValue KeepAliveGetPropertyValue(int slot, [MarshalAs(UnmanagedType.LPWStr)] string name)
+        {
+            Console.WriteLine("SLOT: {0}  PROPERTY: {1}", slot, name);
+            return new JsValue { Type = JsValueType.Integer, I32 = 42 };
         }
 
         object JsValueToObject(JsValue v)
@@ -83,9 +113,6 @@ namespace VroomJs
             switch (v.Type) 
             {
                 case JsValueType.Null:
-                    return null;
-
-                case JsValueType.Object:
                     return null;
 
                 case JsValueType.Wrapped:
@@ -172,7 +199,14 @@ namespace VroomJs
                 return new JsValue { Type = JsValueType.Date, 
                                       Num = ((DateTime)obj).ToUniversalTime().Ticks/10000.0 - 621355968000000000.0 + 26748000000000.0 };
 
-            throw new InvalidOperationException("can't marshal type to Javascript engine: " + type);
+            // Every object explicitly converted to a value becomes an entry of the
+            // _keepalives list, to make sure the GC won't collect it while still in
+            // use by the unmanaged Javascript engine. We don't try to track duplicates
+            // because adding the same object more than one time acts more or less as
+            // reference counting.
+
+            _keepalives.Add(obj);
+            return new JsValue { Type = JsValueType.Managed, Index = _keepalives.Count - 1 };
         }
 
         #region IDisposable implementation
@@ -188,6 +222,7 @@ namespace VroomJs
             if (_engine.Handle != IntPtr.Zero)
                 jsengine_dispose(_engine);
             _engine = new HandleRef(null, IntPtr.Zero);
+            _keepalives = null;
         }
 
         void CheckDisposed()
