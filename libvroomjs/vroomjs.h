@@ -30,18 +30,30 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+using namespace v8;
+
+// jsvalue (JsValue on the CLR side) is a struct that can be easily marshaled
+// by simply blitting its value (being only 16 bytes should be quite fast too).
+
+#define JSVALUE_TYPE_ERROR     -1
+#define JSVALUE_TYPE_NULL       0
+#define JSVALUE_TYPE_BOOLEAN    1
+#define JSVALUE_TYPE_INTEGER    2
+#define JSVALUE_TYPE_NUMBER     3
+#define JSVALUE_TYPE_STRING     4
+#define JSVALUE_TYPE_DATE       5
+#define JSVALUE_TYPE_ARRAY      13
+#define JSVALUE_TYPE_MANAGED    14
+#define JSVALUE_TYPE_WRAPPED    15
+
 extern "C" 
 {
-    struct jsengine 
-    {
-        v8::Isolate                    *isolate;
-        v8::Persistent<v8::Context>    *context;
-    };
-    
     struct jsvalue
     {
-        // 8 bytes is the maximum CLR alignment; by putting the union first we make
-        // (almost) sure the offset of 'type' will always be 8.
+        // 8 bytes is the maximum CLR alignment; by putting the union first and a
+        // int64_t inside it we make (almost) sure the offset of 'type' will always
+        // be 8 and the total size 16. We add a check to jsengine_new anyway.
+        
         union 
         {
             int32_t     i32;
@@ -53,23 +65,71 @@ extern "C"
         
         int32_t         type;
         int32_t         length;
-    };  
-    
-    extern jsvalue jsvalue_any_fromV8(v8::Handle<v8::Value> value);
-    extern jsvalue jsvalue_string_fromV8(v8::Handle<v8::Value> value);
-    extern jsvalue jsvalue_error_fromV8(v8::TryCatch& trycatch);
-    extern v8::Handle<v8::Value> jsvalue_toV8(jsvalue value);
+    };
 }
 
-#define JSVALUE_TYPE_ERROR      0xFFFFFFFF
-#define JSVALUE_TYPE_NULL       0
-#define JSVALUE_TYPE_BOOLEAN    1
-#define JSVALUE_TYPE_INTEGER    2
-#define JSVALUE_TYPE_NUMBER     3
-#define JSVALUE_TYPE_STRING     4
-#define JSVALUE_TYPE_DATE       5
-#define JSVALUE_TYPE_ARRAY      13
-#define JSVALUE_TYPE_OBJECT     14
-#define JSVALUE_TYPE_WRAPPED    15
+// The only way for the C++/V8 side to call into the CLR is to use the function
+// pointers (CLR, delegates) defined below.
+
+extern "C" 
+{
+    // We don't have a keepalive_add_f because that is managed on the managed side.
+    // Its definition would be "int (*keepalive_add_f) (ManagedRef obj)".
+    
+    typedef void (*keepalive_remove_f) (int id);
+    typedef jsvalue (*keepalive_get_property_value_f) (int id, uint16_t* name);
+    typedef jsvalue (*keepalive_set_property_value_f) (int id, uint16_t* name, jsvalue value);
+}
+
+// JsEngine is a single isolated v8 interpreter and is the referenced as an IntPtr
+// by the JsEngine on the CLR side.
+
+class JsEngine {
+ public:
+    inline JsEngine() {}
+     
+    inline void SetRemoveDelegate(keepalive_remove_f delegate) { keepalive_remove_ = delegate; }
+    inline void SetGetPropertyValueDelegate(keepalive_get_property_value_f delegate) { keepalive_get_property_value_ = delegate; }
+    inline void SetSetPropertyValueDelegate(keepalive_set_property_value_f delegate) { keepalive_set_property_value_ = delegate; }
+    
+    inline void CallRemove(int id) { keepalive_remove_(id); }
+    inline jsvalue CallGetPropertyValue(int id, uint16_t* name) { return keepalive_get_property_value_(id, name); }
+    inline jsvalue CallSetPropertyValue(int id, uint16_t* name, jsvalue value) { return keepalive_set_property_value_(id, name, value); }
+    
+    jsvalue Execute(const uint16_t* str);
+    
+    jsvalue GetValue(const uint16_t* name);
+    jsvalue SetValue(const uint16_t* name, jsvalue value);
+         
+    Handle<Value> AnyToV8(jsvalue value); 
+    jsvalue ErrorFromV8(TryCatch& trycatch);
+    jsvalue StringFromV8(Handle<Value> value);
+    jsvalue AnyFromV8(Handle<Value> value);
+         
+    void Dispose();
+    
+    static JsEngine* New();
+            
+ private:               
+    v8::Isolate *isolate_;
+    v8::Persistent<v8::Context> *context_;
+    v8::Persistent<v8::ObjectTemplate> *managed_template_;
+    keepalive_remove_f keepalive_remove_;
+    keepalive_get_property_value_f keepalive_get_property_value_;
+    keepalive_set_property_value_f keepalive_set_property_value_;
+};
+
+class ManagedRef {
+ public:
+    inline explicit ManagedRef(JsEngine* engine, int id) : engine_(engine), id_(id) {}
+    
+    Handle<Value> GetPropertyValue(Local<String> name);
+    
+    ~ManagedRef() { engine_->CallRemove(id_); }
+ private:
+    ManagedRef() {}
+    JsEngine* engine_;
+    int32_t id_;
+};
 
 #endif

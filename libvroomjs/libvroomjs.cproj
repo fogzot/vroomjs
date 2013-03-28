@@ -36,7 +36,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="jsengine.cpp" />
-    <Compile Include="jsvalue.cpp" />
+    <Compile Include="bridge.cpp" />
+    <Compile Include="managedref.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="vroomjs.h" />
