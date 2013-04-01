@@ -35,16 +35,17 @@ using namespace v8;
 // jsvalue (JsValue on the CLR side) is a struct that can be easily marshaled
 // by simply blitting its value (being only 16 bytes should be quite fast too).
 
-#define JSVALUE_TYPE_ERROR     -1
-#define JSVALUE_TYPE_NULL       0
-#define JSVALUE_TYPE_BOOLEAN    1
-#define JSVALUE_TYPE_INTEGER    2
-#define JSVALUE_TYPE_NUMBER     3
-#define JSVALUE_TYPE_STRING     4
-#define JSVALUE_TYPE_DATE       5
-#define JSVALUE_TYPE_ARRAY      13
-#define JSVALUE_TYPE_MANAGED    14
-#define JSVALUE_TYPE_WRAPPED    15
+#define JSVALUE_TYPE_UNKNOWN_ERROR  -1
+#define JSVALUE_TYPE_NULL            0
+#define JSVALUE_TYPE_BOOLEAN         1
+#define JSVALUE_TYPE_INTEGER         2
+#define JSVALUE_TYPE_NUMBER          3
+#define JSVALUE_TYPE_STRING          4
+#define JSVALUE_TYPE_DATE            5
+#define JSVALUE_TYPE_ARRAY          11
+#define JSVALUE_TYPE_MANAGED        12
+#define JSVALUE_TYPE_MANAGED_ERROR  13
+#define JSVALUE_TYPE_WRAPPED        15
 
 extern "C" 
 {
@@ -66,6 +67,8 @@ extern "C"
         int32_t         type;
         int32_t         length;
     };
+    
+    void jsvalue_dispose(jsvalue value);
 }
 
 // The only way for the C++/V8 side to call into the CLR is to use the function
@@ -123,9 +126,13 @@ class ManagedRef {
  public:
     inline explicit ManagedRef(JsEngine* engine, int id) : engine_(engine), id_(id) {}
     
+    inline int32_t Id() { return id_; }
+    
     Handle<Value> GetPropertyValue(Local<String> name);
+    Handle<Value> SetPropertyValue(Local<String> name, Local<Value> value);
     
     ~ManagedRef() { engine_->CallRemove(id_); }
+    
  private:
     ManagedRef() {}
     JsEngine* engine_;

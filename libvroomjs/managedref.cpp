@@ -29,7 +29,38 @@ using namespace v8;
 
 Handle<Value> ManagedRef::GetPropertyValue(Local<String> name)
 {
+    Handle<Value> res;
+    
     String::Value s(name);
     
-    return engine_->AnyToV8(engine_->CallGetPropertyValue(id_, *s));
+    jsvalue r = engine_->CallGetPropertyValue(id_, *s);
+    if (r.type == JSVALUE_TYPE_MANAGED_ERROR)
+        res = ThrowException(engine_->AnyToV8(r));
+    else
+        res = engine_->AnyToV8(r);
+    
+    // We don't need the jsvalue anymore and the CLR side never reuse them.
+    jsvalue_dispose(r);
+    
+    return res;
+}
+
+Handle<Value> ManagedRef::SetPropertyValue(Local<String> name, Local<Value> value)
+{
+    Handle<Value> res;
+    
+    String::Value s(name);
+    
+    jsvalue v = engine_->AnyFromV8(value);
+    jsvalue r = engine_->CallSetPropertyValue(id_, *s, v);
+    if (r.type == JSVALUE_TYPE_MANAGED_ERROR)
+        res = ThrowException(engine_->AnyToV8(r));
+    else
+        res = engine_->AnyToV8(r);
+    
+    // We don't need the jsvalues anymore and the CLR side never reuse them.
+    jsvalue_dispose(v);
+    jsvalue_dispose(r);
+    
+    return res;
 }

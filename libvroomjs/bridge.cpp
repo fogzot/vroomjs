@@ -30,12 +30,14 @@ using namespace v8;
 extern "C" 
 {
     JsEngine* jsengine_new(keepalive_remove_f keepalive_remove, 
-                           keepalive_get_property_value_f keepalive_get_property_value)
+                           keepalive_get_property_value_f keepalive_get_property_value,
+                           keepalive_set_property_value_f keepalive_set_property_value)
     {
         JsEngine* engine = JsEngine::New();
         if (engine != NULL) {
             engine->SetRemoveDelegate(keepalive_remove);
             engine->SetGetPropertyValueDelegate(keepalive_get_property_value);
+            engine->SetSetPropertyValueDelegate(keepalive_set_property_value);
         }
         return engine;
     }
@@ -83,7 +85,7 @@ extern "C"
                 
     void jsvalue_dispose(jsvalue value)
     {
-        if (value.type == JSVALUE_TYPE_STRING || value.type == JSVALUE_TYPE_ERROR) {
+        if (value.type == JSVALUE_TYPE_STRING || value.type == JSVALUE_TYPE_UNKNOWN_ERROR) {
             if (value.value.str != NULL)
                 delete value.value.str;
         }

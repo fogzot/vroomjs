@@ -37,7 +37,10 @@ static Handle<Value> managed_prop_get(Local<String> name, const AccessorInfo& in
 
 static Handle<Value> managed_prop_set(Local<String> name, Local<Value> value, const AccessorInfo& info)
 {
-
+    Local<Object> self = info.Holder();
+    Local<External> wrap = Local<External>::Cast(self->GetInternalField(0));
+    ManagedRef* ref = (ManagedRef*)wrap->Value();
+    return ref->SetPropertyValue(name, value);
 }
 
 JsEngine* JsEngine::New()
@@ -118,7 +121,9 @@ jsvalue JsEngine::SetValue(const uint16_t* name, jsvalue value)
         
     Handle<Value> v = AnyToV8(value);
 
-    (*(context_))->Global()->Set(String::New(name), v);          
+    if ((*(context_))->Global()->Set(String::New(name), v) == false) {
+        // TODO: Return an error if set failed.
+    }          
     (*(context_))->Exit();
     
     return AnyFromV8(Null());
@@ -126,24 +131,52 @@ jsvalue JsEngine::SetValue(const uint16_t* name, jsvalue value)
 
 jsvalue JsEngine::GetValue(const uint16_t* name)
 {
+    jsvalue v;
+    
     Locker locker(isolate_);
     Isolate::Scope isolate_scope(isolate_);
     (*(context_))->Enter();
         
     HandleScope scope;
-        
+
+    TryCatch trycatch;
+                
+    Local<Value> value = (*(context_))->Global()->Get(String::New(name));
+    if (!value.IsEmpty()) {
+        v = AnyFromV8(value);        
+    }
+    else {
+        v = ErrorFromV8(trycatch);
+    }
+    
     (*(context_))->Exit();
     
-    return AnyFromV8(Null());
+    return v;
 }
 
 jsvalue JsEngine::ErrorFromV8(TryCatch& trycatch)
 {
     jsvalue v;
 
-    Handle<Value> exception = trycatch.Exception();
-    v = StringFromV8(exception);
-    v.type = JSVALUE_TYPE_ERROR;
+    Local<Value> exception = trycatch.Exception();
+
+    v.type = JSVALUE_TYPE_UNKNOWN_ERROR;        
+    v.value.str = 0;
+    
+    // If this is a managed exception we need to place its ID inside the jsvalue.
+    if (exception->IsObject()) {
+        Local<Object> obj = Local<Object>::Cast(exception);
+        if (obj->InternalFieldCount() == 1) {
+            ManagedRef* ref = (ManagedRef*)obj->GetPointerFromInternalField(0); 
+            v.type = JSVALUE_TYPE_MANAGED_ERROR;
+            v.length = ref->Id();
+        }
+    }
+    
+    // Else we just return an unknown error by casting the exception to a string.
+    if (v.type == JSVALUE_TYPE_UNKNOWN_ERROR) {
+        v = StringFromV8(exception);
+    }    
     
     return v;
 }
@@ -168,7 +201,7 @@ jsvalue JsEngine::AnyFromV8(Handle<Value> value)
     jsvalue v;
     
     // Initialize to a generic error.
-    v.type = JSVALUE_TYPE_ERROR;
+    v.type = JSVALUE_TYPE_UNKNOWN_ERROR;
     v.length = 0;
     v.value.str = 0;
     
@@ -232,10 +265,12 @@ Handle<Value> JsEngine::AnyToV8(jsvalue v)
     }
     
     // This is an ID to a managed object that lives inside the JsEngine keep-alive
-    // cache. We just wrap it and the pointer to the engine inside an External.
+    // cache. We just wrap it and the pointer to the engine inside an External. A
+    // managed error is still a CLR object so it is wrapped exactly as a normal
+    // managed object.
     
-    if (v.type == JSVALUE_TYPE_MANAGED) {
-        ManagedRef* ref = new ManagedRef(this, v.value.i32);
+    if (v.type == JSVALUE_TYPE_MANAGED || v.type == JSVALUE_TYPE_MANAGED_ERROR) {
+        ManagedRef* ref = new ManagedRef(this, v.length);
         Local<Object> obj = (*(managed_template_))->NewInstance();
         obj->SetInternalField(0, External::New(ref));
         return obj;
