@@ -53,14 +53,14 @@ extern "C"
         return engine->Execute(str);
     }
         
-    jsvalue jsengine_set_value(JsEngine* engine, const uint16_t* name, jsvalue value)
+    jsvalue jsengine_set_variable(JsEngine* engine, const uint16_t* name, jsvalue value)
     {
-        return engine->SetValue(name, value);
+        return engine->SetVariable(name, value);
     }
 
-    jsvalue jsengine_get_value(JsEngine* engine, const uint16_t* name)
+    jsvalue jsengine_get_variable(JsEngine* engine, const uint16_t* name)
     {
-        return engine->GetValue(name);
+        return engine->GetVariable(name);
     }
 
     jsvalue jsvalue_alloc_string(const uint16_t* str)

@@ -101,8 +101,8 @@ class JsEngine {
     
     jsvalue Execute(const uint16_t* str);
     
-    jsvalue GetValue(const uint16_t* name);
-    jsvalue SetValue(const uint16_t* name, jsvalue value);
+    jsvalue GetVariable(const uint16_t* name);
+    jsvalue SetVariable(const uint16_t* name, jsvalue value);
          
     Handle<Value> AnyToV8(jsvalue value); 
     jsvalue ErrorFromV8(TryCatch& trycatch);

@@ -111,7 +111,7 @@ jsvalue JsEngine::Execute(const uint16_t* str)
     return v;     
 }
 
-jsvalue JsEngine::SetValue(const uint16_t* name, jsvalue value)
+jsvalue JsEngine::SetVariable(const uint16_t* name, jsvalue value)
 {
     Locker locker(isolate_);
     Isolate::Scope isolate_scope(isolate_);
@@ -129,7 +129,7 @@ jsvalue JsEngine::SetValue(const uint16_t* name, jsvalue value)
     return AnyFromV8(Null());
 }
 
-jsvalue JsEngine::GetValue(const uint16_t* name)
+jsvalue JsEngine::GetVariable(const uint16_t* name)
 {
     jsvalue v;
     
