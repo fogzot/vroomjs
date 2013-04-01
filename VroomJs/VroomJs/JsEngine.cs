@@ -46,10 +46,10 @@ namespace VroomJs
         static extern JsValue jsengine_execute(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string str);
 
         [DllImport("vroomjs")]
-        static extern JsValue jsengine_get_value(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name);
+        static extern JsValue jsengine_get_variable(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name);
 
         [DllImport("vroomjs")]
-        static extern void jsengine_set_value(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value);
+        static extern void jsengine_set_variable(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value);
 
         [DllImport("vroomjs")]
         static extern JsValue jsvalue_alloc_string([MarshalAs(UnmanagedType.LPWStr)] string str);
@@ -76,7 +76,7 @@ namespace VroomJs
         Delegate _keepalive_get_property_value;
         Delegate _keepalive_set_property_value;
 
-        public object Execute(string code)
+        public dynamic Execute(string code)
         {
             if (code == null)
                 throw new ArgumentNullException("code");
@@ -93,14 +93,14 @@ namespace VroomJs
             return res;
         }
 
-        public object GetValue(string name)
+        public dynamic GetVariable(string name)
         {
             if (name == null)
                 throw new ArgumentNullException("name");
 
             CheckDisposed();
 
-            JsValue v = jsengine_get_value(_engine, name);
+            JsValue v = jsengine_get_variable(_engine, name);
             object res = JsValueToObject(v);
             jsvalue_dispose(v);
 
@@ -110,14 +110,16 @@ namespace VroomJs
             return res;
         }
 
-        public void SetValue(string name, object value)
+        public void SetVariable(string name, object value)
         {
             if (name == null)
                 throw new ArgumentNullException("name");
 
             CheckDisposed();
 
-            jsengine_set_value(_engine, name, ObjectToJsValue(value));
+            jsengine_set_variable(_engine, name, ObjectToJsValue(value));
+
+            // TODO: Check the result of the operation for errors.
         }
 
         int KeepAliveSet(object obj)
