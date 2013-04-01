@@ -37,6 +37,7 @@
     <Compile Include="VroomJs\JsValue.cs" />
     <Compile Include="VroomJs\JsException.cs" />
     <Compile Include="VroomJs\JsValueType.cs" />
+    <Compile Include="VroomJs\JsInteropException.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

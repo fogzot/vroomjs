@@ -24,23 +24,27 @@
 // THE SOFTWARE.
 
 using System;
-using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 
 namespace VroomJs
 { 
-	enum JsValueType
+    [Serializable]
+    public class JsInteropException :JsException
 	{
-        UnknownError = -1,
-        Null = 0,
-        Boolean = 1,
-        Integer = 2,
-        Number = 3,
-        String = 4,
-        Date = 5,
-        Array = 11,
-        Managed = 12,
-        ManagedError = 13,
-        Wrapped = 14,
-        WrappedError = 15
+        public JsInteropException()
+        {
+        }
+
+        public JsInteropException(string message) : base(message)
+        {
+        }
+
+        public JsInteropException(string message, Exception inner) : base(message, inner)
+        {
+        }
+
+        protected JsInteropException(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+        }
     }
 }

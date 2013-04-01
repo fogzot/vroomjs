@@ -25,6 +25,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace VroomJs
@@ -33,9 +34,10 @@ namespace VroomJs
 	{
         [DllImport("vroomjs")]
         static extern IntPtr jsengine_new(
-            Delegate keepalive_remove,
-            Delegate keepalive_get_property_value
-            );
+            Delegate keepaliveRemove,
+            Delegate keepaliveGetPropertyValue,
+            Delegate keepaliveSetPropertyValue
+        );
 
         [DllImport("vroomjs")]
         static extern void jsengine_dispose(HandleRef engine);
@@ -44,26 +46,35 @@ namespace VroomJs
         static extern JsValue jsengine_execute(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string str);
 
         [DllImport("vroomjs")]
+        static extern JsValue jsengine_get_value(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name);
+
+        [DllImport("vroomjs")]
         static extern void jsengine_set_value(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value);
+
+        [DllImport("vroomjs")]
+        static extern JsValue jsvalue_alloc_string([MarshalAs(UnmanagedType.LPWStr)] string str);
 
         [DllImport("vroomjs")]
         static extern void jsvalue_dispose(JsValue value);
 
         public JsEngine()
 		{
-            _keepalives = new List<object>();
+            _keepalives = new Dictionary<int,object>();
             _keepalive_remove = new Action<int>(KeepAliveRemove);
             _keepalive_get_property_value = new Func<int,string,JsValue>(KeepAliveGetPropertyValue);
+            _keepalive_set_property_value = new Func<int,string,JsValue,JsValue>(KeepAliveSetPropertyValue);
 
-            _engine = new HandleRef(this, jsengine_new(_keepalive_remove, _keepalive_get_property_value));
+            _engine = new HandleRef(this, jsengine_new(_keepalive_remove, _keepalive_get_property_value, _keepalive_set_property_value));
 		}
 
         HandleRef _engine;
-        List<object> _keepalives;
+        Dictionary<int,object> _keepalives;
+        int _keepalives_count;
 
         // Make sure the delegates we pass to the C++ engine won't fly away during a GC.
         Delegate _keepalive_remove;
         Delegate _keepalive_get_property_value;
+        Delegate _keepalive_set_property_value;
 
         public object Execute(string code)
         {
@@ -76,8 +87,26 @@ namespace VroomJs
             object res = JsValueToObject(v);
             jsvalue_dispose(v);
 
-            if (res is Exception)
-                throw (Exception)res;
+            Exception e = res as Exception;
+            if (e != null)
+                throw e;
+            return res;
+        }
+
+        public object GetValue(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException("name");
+
+            CheckDisposed();
+
+            JsValue v = jsengine_get_value(_engine, name);
+            object res = JsValueToObject(v);
+            jsvalue_dispose(v);
+
+            Exception e = res as Exception;
+            if (e != null)
+                throw e;
             return res;
         }
 
@@ -91,21 +120,94 @@ namespace VroomJs
             jsengine_set_value(_engine, name, ObjectToJsValue(value));
         }
 
+        int KeepAliveSet(object obj)
+        {
+            _keepalives.Add(_keepalives_count, obj);
+            return _keepalives_count++;
+        }
+
+        object KeepAliveGet(int slot)
+        {
+            object obj;
+            if (_keepalives.TryGetValue(slot, out obj))
+                return obj;
+            return null;
+        }
+
         void KeepAliveRemove(int slot)
         {
-            Console.WriteLine("REMOVING SLOT: " + slot);
-            if (_keepalives.Count > slot) {
-                IDisposable disposable = _keepalives[slot] as IDisposable;
+            var obj = KeepAliveGet(slot);
+            if (obj != null) {
+                var disposable = obj as IDisposable;
                 if (disposable != null)
                     disposable.Dispose();
-                _keepalives[slot] = null;
+                _keepalives.Remove(slot);
             }
         }
 
         JsValue KeepAliveGetPropertyValue(int slot, [MarshalAs(UnmanagedType.LPWStr)] string name)
         {
-            Console.WriteLine("SLOT: {0}  PROPERTY: {1}", slot, name);
-            return new JsValue { Type = JsValueType.Integer, I32 = 42 };
+            // TODO: This is pretty slow: use a cache of generated code to make it faster.
+
+            var obj = KeepAliveGet(slot);
+            if (obj != null) {
+                Type type = obj.GetType();
+
+                // First of all try with a public property (the most common case).
+
+                try {
+                    PropertyInfo pi = type.GetProperty(name, BindingFlags.Instance|BindingFlags.Public|BindingFlags.GetProperty);
+                    if (pi != null)
+                        return ObjectToJsValue(pi.GetValue(obj, null));
+
+                    // Then with an instance method: if found we wrap it in a delegate.
+
+                    // Else an error.
+
+                    return JsValue.Error(KeepAliveSet(
+                        new InvalidOperationException(String.Format("property not found on {0}: {1} ", type, name)))); 
+                }
+                catch (TargetInvocationException e) {
+                    // Client code probably isn't interested in the exception part related to
+                    // reflection, so we unwrap it and pass to V8 only the real exception thrown.
+                    if (e.InnerException != null)
+                        return JsValue.Error(KeepAliveSet(e.InnerException));
+                    throw;
+                }
+                catch (Exception e) {
+                    return JsValue.Error(KeepAliveSet(e));
+                }
+            }
+
+            return JsValue.Error(KeepAliveSet(new IndexOutOfRangeException("invalid keepalive slot: " + slot))); 
+        }
+
+        JsValue KeepAliveSetPropertyValue(int slot, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value)
+        {
+            // TODO: This is pretty slow: use a cache of generated code to make it faster.
+
+            var obj = KeepAliveGet(slot);
+            if (obj != null) {
+                Type type = obj.GetType();
+
+                // We can only set properties; everything else is an error.
+                try {
+                    PropertyInfo pi = type.GetProperty(name, BindingFlags.Instance|BindingFlags.Public|BindingFlags.SetProperty);
+                    if (pi != null) {
+                        pi.SetValue(obj, JsValueToObject(value), null);
+                        return JsValue.Null;
+                    }
+                    else {
+                        return JsValue.Error(KeepAliveSet(
+                            new InvalidOperationException(String.Format("property not found on {0}: {1} ", type, name)))); 
+                    }
+                }
+                catch (Exception e) {
+                    return JsValue.Error(KeepAliveSet(e));
+                }
+            }
+
+            return JsValue.Error(KeepAliveSet(new IndexOutOfRangeException("invalid keepalive slot: " + slot))); 
         }
 
         object JsValueToObject(JsValue v)
@@ -113,9 +215,6 @@ namespace VroomJs
             switch (v.Type) 
             {
                 case JsValueType.Null:
-                    return null;
-
-                case JsValueType.Wrapped:
                     return null;
 
                 case JsValueType.Boolean:
@@ -145,9 +244,20 @@ namespace VroomJs
                     return r;
                 }
                     
-                case JsValueType.Error:
-                    return new JsException(Marshal.PtrToStringUni(v.ptr));
+                case JsValueType.UnknownError:
+                    if (v.ptr != IntPtr.Zero)
+                        return new JsException(Marshal.PtrToStringUni(v.ptr));
+                    return new JsInteropException("unknown error without reason");
                     
+                case JsValueType.Managed:
+                    return KeepAliveGet(v.Index);
+
+                case JsValueType.ManagedError:
+                    string msg = null;
+                    if (v.ptr != IntPtr.Zero)
+                        msg = Marshal.PtrToStringUni(v.ptr);
+                    return new JsException(msg, KeepAliveGet(v.Index) as Exception);
+
                 default:
                     throw new InvalidOperationException("unknown type code: " + v.Type);
             }           
@@ -168,10 +278,10 @@ namespace VroomJs
             if (type == typeof(Boolean))
                 return new JsValue { Type = JsValueType.Boolean, I32 = (bool)obj ? 1 : 0 };
 
-            if (type == typeof(String))
-                return new JsValue { Type = JsValueType.String, ptr = Marshal.StringToHGlobalUni((string)obj) };
-            if (type == typeof(Char))
-                return new JsValue { Type = JsValueType.String, ptr = Marshal.StringToHGlobalUni(obj.ToString()) };
+            if (type == typeof(String) || type == typeof(Char)) {
+                // We need to allocate some memory on the other side; will be free'd by unmanaged code.
+                return jsvalue_alloc_string(obj.ToString());
+            }
 
             if (type == typeof(Byte))
                 return new JsValue { Type = JsValueType.Integer, I32 = (int)(Byte)obj };
@@ -205,8 +315,7 @@ namespace VroomJs
             // because adding the same object more than one time acts more or less as
             // reference counting.
 
-            _keepalives.Add(obj);
-            return new JsValue { Type = JsValueType.Managed, Index = _keepalives.Count - 1 };
+            return new JsValue { Type = JsValueType.Managed, Index = KeepAliveSet(obj) };
         }
 
         #region IDisposable implementation

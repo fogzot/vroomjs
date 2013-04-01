@@ -42,5 +42,14 @@ namespace VroomJs
         // Length of array or string or managed object keepalive index.
         [FieldOffset(12)] public int Length;
         [FieldOffset(12)] public int Index;
+
+        public static JsValue Null {
+            get { return new JsValue(); }
+        }
+
+        public static JsValue Error(int slot)
+        {
+            return new JsValue { Type = JsValueType.ManagedError, Index = slot };
+        }
     }
 }
