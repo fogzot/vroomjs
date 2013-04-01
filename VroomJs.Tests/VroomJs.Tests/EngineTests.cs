@@ -112,38 +112,45 @@ namespace VroomJs.Tests
         }
 
         [TestCase]
-        public void SetValueNull()
+        public void ManagedDereference()
+        {
+            js.SetValue("a", new object());
+            js.SetValue("a", null);
+        }
+
+        [TestCase]
+        public void SetGetValueNull()
         {
             js.SetValue("foo", null);
-            Assert.That(js.Execute("foo"), Is.Null);
+            Assert.That(js.GetValue("foo"), Is.Null);
         }
 
         [TestCase]
-        public void SetValueBoolean()
+        public void SetGetValueBoolean()
         {
             js.SetValue("foo", true);
-            Assert.That(js.Execute("foo"), Is.EqualTo(true));
+            Assert.That(js.GetValue("foo"), Is.EqualTo(true));
         }
 
         [TestCase]
-        public void SetValueInteger()
+        public void SetGetValueInteger()
         {
             js.SetValue("foo", 13);
-            Assert.That(js.Execute("foo"), Is.EqualTo(13));
+            Assert.That(js.GetValue("foo"), Is.EqualTo(13));
         }
 
         [TestCase]
-        public void SetValueNumber()
+        public void SetGetValueNumber()
         {
             js.SetValue("foo", 3.14159);
-            Assert.That(js.Execute("foo"), Is.EqualTo(3.14159));
+            Assert.That(js.GetValue("foo"), Is.EqualTo(3.14159));
         }
 
         [TestCase]
-        public void SetValueString()
+        public void SetGetValueString()
         {
             js.SetValue("foo", "bar");
-            Assert.That(js.Execute("foo"), Is.EqualTo("bar"));
+            Assert.That(js.GetValue("foo"), Is.EqualTo("bar"));
         }
 
     }
