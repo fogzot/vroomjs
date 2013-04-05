@@ -46,12 +46,62 @@ namespace VroomJs.Tests
         }
 
         [Test]
-        public void GetIntegerProperty()
+        public void GetManagedIntegerProperty()
         {
-            var t = new TestClass { P1 = 42 };
+            var v = 42;
+            var t = new TestClass { Int32Property = v };
             js.SetVariable("o", t);
-            Assert.That(js.Execute("o.P1"), Is.EqualTo(42));
+            Assert.That(js.Execute("o.Int32Property"), Is.EqualTo(v));
         }
+
+        [Test]
+        public void GetManagedStringProperty()
+        {
+            var v = "The lazy dog bla bla bla...";
+            var t = new TestClass { StringProperty = v };
+            js.SetVariable("o", t);
+            Assert.That(js.Execute("o.StringProperty"), Is.EqualTo(v));
+        }
+
+        [Test]
+        public void GetManagedNestedProperty()
+        {
+            var v = "The lazy dog bla bla bla...";
+            var t = new TestClass { NestedObject = new TestClass { StringProperty = v }};
+            js.SetVariable("o", t);
+            Assert.That(js.Execute("o.NestedObject.StringProperty"), Is.EqualTo(v));
+        }
+
+        [Test]
+        public void SetManagedIntegerProperty()
+        {
+            var t = new TestClass();
+            js.SetVariable("o", t);
+            js.Execute("o.Int32Property = 42");
+            Assert.That(t.Int32Property, Is.EqualTo(42));
+        }
+
+        [Test]
+        public void SetManagedStringProperty()
+        {
+            var t = new TestClass();
+            js.SetVariable("o", t);
+            js.Execute("o.StringProperty = 'This was set from Javascript!'");
+            Assert.That(t.StringProperty, Is.EqualTo("This was set from Javascript!"));
+        }
+
+        [Test]
+        public void SetManagedNestedProperty()
+        {
+            var t = new TestClass();
+            var n = new TestClass();
+            js.SetVariable("o", t);
+            js.SetVariable("n", n);
+            js.Execute("o.NestedObject = n; o.NestedObject.Int32Property = 42");
+            Assert.That(t.NestedObject, Is.EqualTo(n));
+            Assert.That(n.Int32Property, Is.EqualTo(42));
+        }
+
     }
 }
 

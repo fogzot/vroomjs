@@ -23,15 +23,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using NUnit.Framework;
-
 namespace VroomJs.Tests
 {
     public class TestClass
     {
-        public int P1 { get; set; }
-        public string P2 { get; set; }
+        public int Int32Property { get; set; }
+        public string StringProperty { get; set; }
+        public TestClass NestedObject { get; set; }
     }
 }
 
