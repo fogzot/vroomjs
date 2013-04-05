@@ -32,11 +32,15 @@ namespace VroomJs
 {
 	public class JsEngine : IDisposable
 	{
+        delegate void KeepaliveRemoveDelegate(int slot);
+        delegate JsValue KeepAliveGetPropertyValueDelegate(int slot, [MarshalAs(UnmanagedType.LPWStr)] string name);
+        delegate JsValue KeepAliveSetPropertyValueDelegate(int slot, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value);
+
         [DllImport("vroomjs")]
         static extern IntPtr jsengine_new(
-            Delegate keepaliveRemove,
-            Delegate keepaliveGetPropertyValue,
-            Delegate keepaliveSetPropertyValue
+            KeepaliveRemoveDelegate keepaliveRemove,
+            KeepAliveGetPropertyValueDelegate keepaliveGetPropertyValue,
+            KeepAliveSetPropertyValueDelegate keepaliveSetPropertyValue
         );
 
         [DllImport("vroomjs")]
@@ -52,6 +56,9 @@ namespace VroomJs
         static extern void jsengine_set_variable(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value);
 
         [DllImport("vroomjs")]
+        static extern JsValue jsengine_get_property_value(HandleRef engine, IntPtr ptr, [MarshalAs(UnmanagedType.LPWStr)] string name);
+
+        [DllImport("vroomjs")]
         static extern JsValue jsvalue_alloc_string([MarshalAs(UnmanagedType.LPWStr)] string str);
 
         [DllImport("vroomjs")]
@@ -60,9 +67,9 @@ namespace VroomJs
         public JsEngine()
 		{
             _keepalives = new Dictionary<int,object>();
-            _keepalive_remove = new Action<int>(KeepAliveRemove);
-            _keepalive_get_property_value = new Func<int,string,JsValue>(KeepAliveGetPropertyValue);
-            _keepalive_set_property_value = new Func<int,string,JsValue,JsValue>(KeepAliveSetPropertyValue);
+            _keepalive_remove = new KeepaliveRemoveDelegate(KeepAliveRemove);
+            _keepalive_get_property_value = new KeepAliveGetPropertyValueDelegate(KeepAliveGetPropertyValue);
+            _keepalive_set_property_value = new KeepAliveSetPropertyValueDelegate(KeepAliveSetPropertyValue);
 
             _engine = new HandleRef(this, jsengine_new(_keepalive_remove, _keepalive_get_property_value, _keepalive_set_property_value));
 		}
@@ -72,11 +79,11 @@ namespace VroomJs
         int _keepalives_count;
 
         // Make sure the delegates we pass to the C++ engine won't fly away during a GC.
-        Delegate _keepalive_remove;
-        Delegate _keepalive_get_property_value;
-        Delegate _keepalive_set_property_value;
+        KeepaliveRemoveDelegate _keepalive_remove;
+        KeepAliveGetPropertyValueDelegate _keepalive_get_property_value;
+        KeepAliveSetPropertyValueDelegate _keepalive_set_property_value;
 
-        public dynamic Execute(string code)
+        public object Execute(string code)
         {
             if (code == null)
                 throw new ArgumentNullException("code");
@@ -87,13 +94,13 @@ namespace VroomJs
             object res = JsValueToObject(v);
             jsvalue_dispose(v);
 
-            Exception e = res as Exception;
+            Exception e = res as JsException;
             if (e != null)
                 throw e;
             return res;
         }
 
-        public dynamic GetVariable(string name)
+        public object GetVariable(string name)
         {
             if (name == null)
                 throw new ArgumentNullException("name");
@@ -104,7 +111,7 @@ namespace VroomJs
             object res = JsValueToObject(v);
             jsvalue_dispose(v);
 
-            Exception e = res as Exception;
+            Exception e = res as JsException;
             if (e != null)
                 throw e;
             return res;
@@ -120,6 +127,29 @@ namespace VroomJs
             jsengine_set_variable(_engine, name, ObjectToJsValue(value));
 
             // TODO: Check the result of the operation for errors.
+        }
+
+        public object GetPropertyValue(JsObject obj, string name)
+        {
+            if (obj == null)
+                throw new ArgumentNullException("obj");
+            if (name == null)
+                throw new ArgumentNullException("name");
+
+            CheckDisposed();
+
+            // Anything that would result in undefined is null on this side.
+            if (obj.Ptr == IntPtr.Zero)
+                return null;
+
+            JsValue v = jsengine_get_property_value(_engine, obj.Ptr, name);
+            object res = JsValueToObject(v);
+            jsvalue_dispose(v);
+
+            Exception e = res as JsException;
+            if (e != null)
+                throw e;
+            return res;
         }
 
         int KeepAliveSet(object obj)
@@ -308,8 +338,10 @@ namespace VroomJs
                 return new JsValue { Type = JsValueType.Number, Num = (double)(Decimal)obj };
 
             if (type == typeof(DateTime))
-                return new JsValue { Type = JsValueType.Date, 
-                                      Num = ((DateTime)obj).ToUniversalTime().Ticks/10000.0 - 621355968000000000.0 + 26748000000000.0 };
+                return new JsValue { 
+                    Type = JsValueType.Date, 
+                    Num = (((DateTime)obj).Ticks - 621355968000000000.0 + 26748000000000.0)/10000.0 
+                };
 
             // Every object explicitly converted to a value becomes an entry of the
             // _keepalives list, to make sure the GC won't collect it while still in

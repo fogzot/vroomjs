@@ -30,6 +30,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -38,6 +39,7 @@
     <Compile Include="VroomJs\JsException.cs" />
     <Compile Include="VroomJs\JsValueType.cs" />
     <Compile Include="VroomJs\JsInteropException.cs" />
+    <Compile Include="VroomJs\JsObject.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
