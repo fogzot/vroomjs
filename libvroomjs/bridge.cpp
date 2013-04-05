@@ -63,6 +63,11 @@ extern "C"
         return engine->GetVariable(name);
     }
 
+    jsvalue jsengine_get_property_value(JsEngine* engine, Persistent<Object>* obj, const uint16_t* name)
+    {
+        return engine->GetPropertyValue(obj, name);
+    }
+
     jsvalue jsvalue_alloc_string(const uint16_t* str)
     {
         jsvalue v;
@@ -95,5 +100,5 @@ extern "C"
             if (value.value.arr != NULL)
                 delete value.value.arr;
         }            
-    }        
+    }    
 }

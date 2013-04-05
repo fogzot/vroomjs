@@ -86,7 +86,7 @@ jsvalue JsEngine::Execute(const uint16_t* str)
 
     Locker locker(isolate_);
     Isolate::Scope isolate_scope(isolate_);
-    (*(context_))->Enter();
+    (*context_)->Enter();
         
     HandleScope scope;
         
@@ -106,7 +106,7 @@ jsvalue JsEngine::Execute(const uint16_t* str)
         v = ErrorFromV8(trycatch);
     }
             
-    (*(context_))->Exit();
+    (*context_)->Exit();
 
     return v;     
 }
@@ -115,16 +115,16 @@ jsvalue JsEngine::SetVariable(const uint16_t* name, jsvalue value)
 {
     Locker locker(isolate_);
     Isolate::Scope isolate_scope(isolate_);
-    (*(context_))->Enter();
+    (*context_)->Enter();
         
     HandleScope scope;
         
     Handle<Value> v = AnyToV8(value);
 
-    if ((*(context_))->Global()->Set(String::New(name), v) == false) {
+    if ((*context_)->Global()->Set(String::New(name), v) == false) {
         // TODO: Return an error if set failed.
     }          
-    (*(context_))->Exit();
+    (*context_)->Exit();
     
     return AnyFromV8(Null());
 }
@@ -135,13 +135,13 @@ jsvalue JsEngine::GetVariable(const uint16_t* name)
     
     Locker locker(isolate_);
     Isolate::Scope isolate_scope(isolate_);
-    (*(context_))->Enter();
+    (*context_)->Enter();
         
     HandleScope scope;
 
     TryCatch trycatch;
                 
-    Local<Value> value = (*(context_))->Global()->Get(String::New(name));
+    Local<Value> value = (*context_)->Global()->Get(String::New(name));
     if (!value.IsEmpty()) {
         v = AnyFromV8(value);        
     }
@@ -149,7 +149,32 @@ jsvalue JsEngine::GetVariable(const uint16_t* name)
         v = ErrorFromV8(trycatch);
     }
     
-    (*(context_))->Exit();
+    (*context_)->Exit();
+    
+    return v;
+}
+
+jsvalue JsEngine::GetPropertyValue(Persistent<Object>* obj, const uint16_t* name)
+{
+    jsvalue v;
+    
+    Locker locker(isolate_);
+    Isolate::Scope isolate_scope(isolate_);
+    (*context_)->Enter();
+        
+    HandleScope scope;
+
+    TryCatch trycatch;
+                
+    Local<Value> value = (*obj)->Get(String::New(name));
+    if (!value.IsEmpty()) {
+        v = AnyFromV8(value);        
+    }
+    else {
+        v = ErrorFromV8(trycatch);
+    }
+    
+    (*context_)->Exit();
     
     return v;
 }
@@ -216,6 +241,10 @@ jsvalue JsEngine::AnyFromV8(Handle<Value> value)
         v.type = JSVALUE_TYPE_INTEGER;
         v.value.i32 = value->Int32Value();            
     }
+    else if (value->IsUint32()) {
+        v.type = JSVALUE_TYPE_INDEX;
+        v.value.i64 = value->Uint32Value();            
+    }
     else if (value->IsNumber()) {
         v.type = JSVALUE_TYPE_NUMBER;
         v.value.num = value->NumberValue();
@@ -237,6 +266,21 @@ jsvalue JsEngine::AnyFromV8(Handle<Value> value)
             }
             v.type = JSVALUE_TYPE_ARRAY;
             v.value.arr = array;
+        }
+    }
+    else if (value->IsFunction()) {
+    
+    }
+    else if (value->IsObject()) {
+        Handle<Object> obj = Handle<Object>::Cast(value);
+        if (obj->InternalFieldCount() == 1) {
+            ManagedRef* ref = (ManagedRef*)obj->GetPointerFromInternalField(0); 
+            v.type = JSVALUE_TYPE_MANAGED;
+            v.length = ref->Id();
+        }
+        else {
+            v.type = JSVALUE_TYPE_WRAPPED;
+            v.value.ptr = new Persistent<Object>(Persistent<Object>::New(obj));
         }
     }
 

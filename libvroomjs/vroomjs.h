@@ -42,10 +42,12 @@ using namespace v8;
 #define JSVALUE_TYPE_NUMBER          3
 #define JSVALUE_TYPE_STRING          4
 #define JSVALUE_TYPE_DATE            5
+#define JSVALUE_TYPE_INDEX           6
 #define JSVALUE_TYPE_ARRAY          11
 #define JSVALUE_TYPE_MANAGED        12
 #define JSVALUE_TYPE_MANAGED_ERROR  13
-#define JSVALUE_TYPE_WRAPPED        15
+#define JSVALUE_TYPE_WRAPPED        14
+#define JSVALUE_TYPE_WRAPPED_ERROR  15
 
 extern "C" 
 {
@@ -60,12 +62,13 @@ extern "C"
             int32_t     i32;
             int64_t     i64;
             double      num;
+            void       *ptr;
             uint16_t   *str;
             jsvalue    *arr;
         } value;
         
         int32_t         type;
-        int32_t         length;
+        int32_t         length; // Also used as slot index on the CLR side.
     };
     
     void jsvalue_dispose(jsvalue value);
@@ -89,8 +92,6 @@ extern "C"
 
 class JsEngine {
  public:
-    inline JsEngine() {}
-     
     inline void SetRemoveDelegate(keepalive_remove_f delegate) { keepalive_remove_ = delegate; }
     inline void SetGetPropertyValueDelegate(keepalive_get_property_value_f delegate) { keepalive_get_property_value_ = delegate; }
     inline void SetSetPropertyValueDelegate(keepalive_set_property_value_f delegate) { keepalive_set_property_value_ = delegate; }
@@ -103,6 +104,7 @@ class JsEngine {
     
     jsvalue GetVariable(const uint16_t* name);
     jsvalue SetVariable(const uint16_t* name, jsvalue value);
+    jsvalue GetPropertyValue(Persistent<Object>* obj, const uint16_t* name);
          
     Handle<Value> AnyToV8(jsvalue value); 
     jsvalue ErrorFromV8(TryCatch& trycatch);
@@ -113,7 +115,9 @@ class JsEngine {
     
     static JsEngine* New();
             
- private:               
+ private:             
+    inline JsEngine() {}
+   
     v8::Isolate *isolate_;
     v8::Persistent<v8::Context> *context_;
     v8::Persistent<v8::ObjectTemplate> *managed_template_;
