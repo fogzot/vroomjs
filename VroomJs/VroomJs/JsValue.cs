@@ -34,7 +34,7 @@ namespace VroomJs
         [FieldOffset(0)] public int    I32;
         [FieldOffset(0)] public long   I64;
         [FieldOffset(0)] public double Num;
-        [FieldOffset(0)] public IntPtr ptr;
+        [FieldOffset(0)] public IntPtr Ptr;
 
         // See JsValueType, marshaled as integer.
         [FieldOffset(8)] public JsValueType Type;

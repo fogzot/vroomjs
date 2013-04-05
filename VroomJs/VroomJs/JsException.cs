@@ -46,5 +46,18 @@ namespace VroomJs
         protected JsException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
+
+        // Native V8 exception objects are wrapped by special instances of JsException.
+
+        public JsException(JsObject nativeException)
+        {
+            _nativeException = nativeException;
+        }
+
+        readonly JsObject _nativeException;
+
+        public JsObject NativeException {
+            get { return _nativeException; }
+        }
     }
 }

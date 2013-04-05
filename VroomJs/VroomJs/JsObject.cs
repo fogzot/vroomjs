@@ -34,6 +34,8 @@ namespace VroomJs
         {
             if (engine == null)
                 throw new ArgumentNullException("engine");
+            if (ptr == IntPtr.Zero)
+                throw new ArgumentException("can't wrap an empty object (ptr is Zero)", "ptr");
 
             _engine = engine;
             _ptr = ptr;
@@ -51,6 +53,13 @@ namespace VroomJs
             result = _engine.GetPropertyValue(this, binder.Name);
             return true;
         }
+
+        public override bool TrySetMember (SetMemberBinder binder, object value)
+        {
+            _engine.SetPropertyValue(this, binder.Name, value);
+            return true;
+        }
+
     }
 }
 

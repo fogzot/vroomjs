@@ -53,10 +53,13 @@ namespace VroomJs
         static extern JsValue jsengine_get_variable(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name);
 
         [DllImport("vroomjs")]
-        static extern void jsengine_set_variable(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value);
+        static extern JsValue jsengine_set_variable(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value);
 
         [DllImport("vroomjs")]
         static extern JsValue jsengine_get_property_value(HandleRef engine, IntPtr ptr, [MarshalAs(UnmanagedType.LPWStr)] string name);
+
+        [DllImport("vroomjs")]
+        static extern JsValue jsengine_set_property_value(HandleRef engine, IntPtr ptr, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value);
 
         [DllImport("vroomjs")]
         static extern JsValue jsvalue_alloc_string([MarshalAs(UnmanagedType.LPWStr)] string str);
@@ -138,9 +141,8 @@ namespace VroomJs
 
             CheckDisposed();
 
-            // Anything that would result in undefined is null on this side.
             if (obj.Ptr == IntPtr.Zero)
-                return null;
+                throw new JsInteropException("wrapped V8 object is empty (IntPtr is Zero)");
 
             JsValue v = jsengine_get_property_value(_engine, obj.Ptr, name);
             object res = JsValueToObject(v);
@@ -150,6 +152,27 @@ namespace VroomJs
             if (e != null)
                 throw e;
             return res;
+        }
+
+        public void SetPropertyValue(JsObject obj, string name, object value)
+        {
+            if (obj == null)
+                throw new ArgumentNullException("obj");
+            if (name == null)
+                throw new ArgumentNullException("name");
+
+            CheckDisposed();
+
+            if (obj.Ptr == IntPtr.Zero)
+                throw new JsInteropException("wrapped V8 object is empty (IntPtr is Zero)");
+
+            JsValue v = jsengine_set_property_value(_engine, obj.Ptr, name, ObjectToJsValue(value));
+            object res = JsValueToObject(v);
+            jsvalue_dispose(v);
+
+            Exception e = res as JsException;
+            if (e != null)
+                throw e;
         }
 
         int KeepAliveSet(object obj)
@@ -259,7 +282,7 @@ namespace VroomJs
                     return v.Num;
 
                 case JsValueType.String:
-                    return Marshal.PtrToStringUni(v.ptr);
+                    return Marshal.PtrToStringUni(v.Ptr);
 
                 case JsValueType.Date:
                     // The formula (v.num * 10000) + 621355968000000000L was taken from a StackOverflow
@@ -270,15 +293,15 @@ namespace VroomJs
                 case JsValueType.Array: {
                     var r = new object[v.Length];
                     for (int i=0 ; i < v.Length ; i++) {
-                        var vi =(JsValue)Marshal.PtrToStructure((v.ptr + 16*i), typeof(JsValue));
+                        var vi =(JsValue)Marshal.PtrToStructure((v.Ptr + 16*i), typeof(JsValue));
                         r[i] = JsValueToObject(vi);
                     }
                     return r;
                 }
                     
                 case JsValueType.UnknownError:
-                    if (v.ptr != IntPtr.Zero)
-                        return new JsException(Marshal.PtrToStringUni(v.ptr));
+                    if (v.Ptr != IntPtr.Zero)
+                        return new JsException(Marshal.PtrToStringUni(v.Ptr));
                     return new JsInteropException("unknown error without reason");
                     
                 case JsValueType.Managed:
@@ -286,9 +309,15 @@ namespace VroomJs
 
                 case JsValueType.ManagedError:
                     string msg = null;
-                    if (v.ptr != IntPtr.Zero)
-                        msg = Marshal.PtrToStringUni(v.ptr);
+                    if (v.Ptr != IntPtr.Zero)
+                        msg = Marshal.PtrToStringUni(v.Ptr);
                     return new JsException(msg, KeepAliveGet(v.Index) as Exception);
+
+                case JsValueType.Wrapped:
+                    return new JsObject(this, v.Ptr);
+
+                case JsValueType.WrappedError:
+                    return new JsException(new JsObject(this, v.Ptr));
 
                 default:
                     throw new InvalidOperationException("unknown type code: " + v.Type);
