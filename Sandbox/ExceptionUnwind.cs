@@ -24,29 +24,25 @@
 // THE SOFTWARE.
 
 using System;
-using VroomJs;
+using System.Reflection;
 
 namespace Sandbox
 {
-    class Sandbox
+    class ExceptionUnwind
     {
         public static void Main (string[] args)
         {
-            using (JsEngine js = new JsEngine()) {
-                for (int i=0 ; i < 10 ; i++) {
-                    js.SetVariable("a", new Simple { N = i, S = (i*10).ToString() });
-                    Console.WriteLine(js.Execute("a.N+' '+a.S"));
-                }
-                Console.WriteLine(js.Execute("a.N+' '+a.X"));
-            }
+            A ();
         }
-    }
 
-    class Simple {
-        public int N { get; set; }
-        public string S { get; set; }
-        public string X {
-            get { throw new InvalidOperationException("ahr ahr"); }
+        static void A()
+        {
+            throw new InvalidOperationException("test", B());
+        }
+
+        static Exception B()
+        {
+            return new InvalidOperationException();
         }
     }
 }
