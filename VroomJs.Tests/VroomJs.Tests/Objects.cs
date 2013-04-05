@@ -102,6 +102,33 @@ namespace VroomJs.Tests
             Assert.That(n.Int32Property, Is.EqualTo(42));
         }
 
+        [Test]
+        public void GetJsIntegerProperty()
+        {
+            js.Execute("var x = { the_answer: 42 }");
+            dynamic x = js.GetVariable("x");
+            Assert.That(x.the_answer, Is.EqualTo(42));
+        }
+
+        [Test]
+        public void GetJsStringProperty()
+        {
+            js.Execute("var x = { a_string: 'This was set from Javascript!' }");
+            dynamic x = js.GetVariable("x");
+            Assert.That(x.a_string, Is.EqualTo("This was set from Javascript!"));
+        }
+
+        [Test]
+        public void GetJsMixedProperty1()
+        {
+            var t = new TestClass();
+            js.SetVariable("o", t);
+            js.Execute("var x = { nested: o }; x.nested.Int32Property = 42");
+            dynamic x = js.GetVariable("x");
+            Assert.That(x.nested, Is.EqualTo(t));
+            Assert.That(t.Int32Property, Is.EqualTo(42));
+        }
+
     }
 }
 
