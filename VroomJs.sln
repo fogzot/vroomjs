@@ -9,6 +9,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VroomJs.Tests", "VroomJs.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "Sandbox\Sandbox.csproj", "{69D8A607-DDBA-4106-A6D9-10CDCFDF51F8}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{AD7F0ACF-121B-4E65-8BCB-A335E0F44F33}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +38,8 @@ Global
 		{CAAF1383-F19C-4349-8532-D7690823DCBC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CAAF1383-F19C-4349-8532-D7690823DCBC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = VroomJs\VroomJs.csproj
 		Policies = $0
@@ -39,7 +47,6 @@ Global
 		$1.DirectoryNamespaceAssociation = None
 		$1.ResourceNamePolicy = FileFormatDefault
 		$0.TextStylePolicy = $2
-		$2.FileWidth = 132
 		$2.inheritsSet = VisualStudio
 		$2.inheritsScope = text/plain
 		$2.scope = text/plain
@@ -180,6 +187,17 @@ Global
 		$29.MessageStyle = $30
 		$30.LineAlign = 0
 		$29.inheritsSet = Mono
+		$0.TextStylePolicy = $31
+		$31.FileWidth = 132
+		$31.inheritsSet = VisualStudio
+		$31.inheritsScope = text/plain
+		$31.scope = text/x-csharp
+		$0.CSharpFormattingPolicy = $32
+		$32.ElseIfNewLinePlacement = SameLine
+		$32.AfterDelegateDeclarationParameterComma = True
+		$32.inheritsSet = Mono
+		$32.inheritsScope = text/x-csharp
+		$32.scope = text/x-csharp
 		outputpath = build
 	EndGlobalSection
 EndGlobal
