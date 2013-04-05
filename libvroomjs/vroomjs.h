@@ -105,6 +105,7 @@ class JsEngine {
     jsvalue GetVariable(const uint16_t* name);
     jsvalue SetVariable(const uint16_t* name, jsvalue value);
     jsvalue GetPropertyValue(Persistent<Object>* obj, const uint16_t* name);
+    jsvalue SetPropertyValue(Persistent<Object>* obj, const uint16_t* name, jsvalue value);
          
     Handle<Value> AnyToV8(jsvalue value); 
     jsvalue ErrorFromV8(TryCatch& trycatch);

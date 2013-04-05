@@ -67,6 +67,11 @@ extern "C"
     {
         return engine->GetPropertyValue(obj, name);
     }
+    
+    jsvalue jsengine_set_property_value(JsEngine* engine, Persistent<Object>* obj, const uint16_t* name, jsvalue value)
+    {
+        return engine->SetPropertyValue(obj, name, value);
+    }    
 
     jsvalue jsvalue_alloc_string(const uint16_t* str)
     {

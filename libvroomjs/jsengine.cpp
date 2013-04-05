@@ -123,7 +123,8 @@ jsvalue JsEngine::SetVariable(const uint16_t* name, jsvalue value)
 
     if ((*context_)->Global()->Set(String::New(name), v) == false) {
         // TODO: Return an error if set failed.
-    }          
+    }        
+      
     (*context_)->Exit();
     
     return AnyFromV8(Null());
@@ -177,6 +178,25 @@ jsvalue JsEngine::GetPropertyValue(Persistent<Object>* obj, const uint16_t* name
     (*context_)->Exit();
     
     return v;
+}
+
+jsvalue JsEngine::SetPropertyValue(Persistent<Object>* obj, const uint16_t* name, jsvalue value)
+{
+    Locker locker(isolate_);
+    Isolate::Scope isolate_scope(isolate_);
+    (*context_)->Enter();
+        
+    HandleScope scope;
+        
+    Handle<Value> v = AnyToV8(value);
+
+    if ((*obj)->Set(String::New(name), v) == false) {
+        // TODO: Return an error if set failed.
+    }          
+    
+    (*context_)->Exit();
+    
+    return AnyFromV8(Null());
 }
 
 jsvalue JsEngine::ErrorFromV8(TryCatch& trycatch)
