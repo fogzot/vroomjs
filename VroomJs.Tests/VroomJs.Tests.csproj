@@ -32,10 +32,15 @@
       <Private>False</Private>
       <Package>nunit</Package>
     </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="VroomJs.Tests\EngineTests.cs" />
+    <Compile Include="VroomJs.Tests\Exceptions.cs" />
+    <Compile Include="VroomJs.Tests\Globals.cs" />
+    <Compile Include="VroomJs.Tests\Objects.cs" />
+    <Compile Include="VroomJs.Tests\TestClass.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>

@@ -29,7 +29,7 @@ using NUnit.Framework;
 namespace VroomJs.Tests
 {
     [TestFixture]
-    public class EngineTests
+    public class Globals
     {
         JsEngine js;
 
@@ -92,67 +92,53 @@ namespace VroomJs.Tests
         }
 
         [TestCase]
-        [ExpectedException(typeof(JsException))]
-        public void SimpleExpressionException()
-        {
-            js.Execute("throw 'xxx'");
-        }
-
-        [TestCase]
-        [ExpectedException(typeof(JsException))]
-        public void CompilationException()
-        {
-            js.Execute("a+§");
-        }
-
-        [TestCase]
         public void UnicodeScript()
         {
             Assert.That(js.Execute("var àbç = 12, $ùì = 30; àbç+$ùì;"), Is.EqualTo(42));
         }
 
         [TestCase]
-        public void ManagedDereference()
+        public void SetGetVariableNull()
         {
-            js.SetValue("a", new object());
-            js.SetValue("a", null);
+            js.SetVariable("foo", null);
+            Assert.That(js.GetVariable("foo"), Is.Null);
         }
 
         [TestCase]
-        public void SetGetValueNull()
+        public void SetGetVariableBoolean()
         {
-            js.SetValue("foo", null);
-            Assert.That(js.GetValue("foo"), Is.Null);
+            js.SetVariable("foo", true);
+            Assert.That(js.GetVariable("foo"), Is.EqualTo(true));
         }
 
         [TestCase]
-        public void SetGetValueBoolean()
+        public void SetGetVariableInteger()
         {
-            js.SetValue("foo", true);
-            Assert.That(js.GetValue("foo"), Is.EqualTo(true));
+            js.SetVariable("foo", 13);
+            Assert.That(js.GetVariable("foo"), Is.EqualTo(13));
         }
 
         [TestCase]
-        public void SetGetValueInteger()
+        public void SetGetVariableNumber()
         {
-            js.SetValue("foo", 13);
-            Assert.That(js.GetValue("foo"), Is.EqualTo(13));
+            js.SetVariable("foo", 3.14159);
+            Assert.That(js.GetVariable("foo"), Is.EqualTo(3.14159));
         }
 
         [TestCase]
-        public void SetGetValueNumber()
+        public void SetGetVariableString()
         {
-            js.SetValue("foo", 3.14159);
-            Assert.That(js.GetValue("foo"), Is.EqualTo(3.14159));
+            js.SetVariable("foo", "bar");
+            Assert.That(js.GetVariable("foo"), Is.EqualTo("bar"));
         }
 
         [TestCase]
-        public void SetGetValueString()
-        {
-            js.SetValue("foo", "bar");
-            Assert.That(js.GetValue("foo"), Is.EqualTo("bar"));
+        public void SetGetVariableDate()
+        {   
+            var dt = new DateTime(1971, 10, 19, 0, 42, 59);
+            js.SetVariable("foo", dt);
+            Assert.That(js.GetVariable("foo") , Is.EqualTo(dt));
         }
-
     }
 }
 
