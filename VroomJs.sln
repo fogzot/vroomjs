@@ -198,6 +198,11 @@ Global
 		$32.inheritsSet = Mono
 		$32.inheritsScope = text/x-csharp
 		$32.scope = text/x-csharp
+		$0.TextStylePolicy = $33
+		$33.FileWidth = 132
+		$33.inheritsSet = VisualStudio
+		$33.inheritsScope = text/plain
+		$33.scope = text/x-c++src
 		outputpath = build
 	EndGlobalSection
 EndGlobal
