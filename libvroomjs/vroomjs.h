@@ -43,7 +43,8 @@ using namespace v8;
 #define JSVALUE_TYPE_STRING          4
 #define JSVALUE_TYPE_DATE            5
 #define JSVALUE_TYPE_INDEX           6
-#define JSVALUE_TYPE_ARRAY          11
+#define JSVALUE_TYPE_ARRAY          10
+#define JSVALUE_TYPE_ERROR          11
 #define JSVALUE_TYPE_MANAGED        12
 #define JSVALUE_TYPE_MANAGED_ERROR  13
 #define JSVALUE_TYPE_WRAPPED        14
@@ -110,6 +111,8 @@ class JsEngine {
     Handle<Value> AnyToV8(jsvalue value); 
     jsvalue ErrorFromV8(TryCatch& trycatch);
     jsvalue StringFromV8(Handle<Value> value);
+    jsvalue WrappedFromV8(Handle<Object> obj);
+    jsvalue ManagedFromV8(Handle<Object> obj);
     jsvalue AnyFromV8(Handle<Value> value);
          
     void Dispose();

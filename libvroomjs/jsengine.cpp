@@ -207,8 +207,15 @@ jsvalue JsEngine::ErrorFromV8(TryCatch& trycatch)
 
     v.type = JSVALUE_TYPE_UNKNOWN_ERROR;        
     v.value.str = 0;
+    v.length = 0;
     
-    // If this is a managed exception we need to place its ID inside the jsvalue.
+    // If this is a managed exception we need to place its ID inside the jsvalue
+    // and set the type JSVALUE_TYPE_MANAGED_ERROR to make sure the CLR side will
+    // throw on it. Else we just wrap and return the exception Object. Note that
+    // this is far from perfect because we ignore both the Message object and the
+    // stack stack trace. If the exception is not an object (but just a string,
+    // for example) we convert it with toString() and return that as an Exception.
+    
     if (exception->IsObject()) {
         Local<Object> obj = Local<Object>::Cast(exception);
         if (obj->InternalFieldCount() == 1) {
@@ -216,12 +223,17 @@ jsvalue JsEngine::ErrorFromV8(TryCatch& trycatch)
             v.type = JSVALUE_TYPE_MANAGED_ERROR;
             v.length = ref->Id();
         }
+        // 
+        // TODO: return a composite/special object with stack trace information.
+        else  {
+            v = WrappedFromV8(obj);
+            v.type = JSVALUE_TYPE_WRAPPED_ERROR;        
+        }            
     }
-    
-    // Else we just return an unknown error by casting the exception to a string.
-    if (v.type == JSVALUE_TYPE_UNKNOWN_ERROR) {
+    else if (!exception.IsEmpty()) {
         v = StringFromV8(exception);
-    }    
+        v.type = JSVALUE_TYPE_ERROR;   
+    }
     
     return v;
 }
@@ -239,7 +251,30 @@ jsvalue JsEngine::StringFromV8(Handle<Value> value)
     }
 
     return v;
-}    
+}   
+
+jsvalue JsEngine::WrappedFromV8(Handle<Object> obj)
+{
+    jsvalue v;
+    
+    v.type = JSVALUE_TYPE_WRAPPED;
+    v.length = 0;
+    v.value.ptr = new Persistent<Object>(Persistent<Object>::New(obj));
+
+    return v;
+} 
+
+jsvalue JsEngine::ManagedFromV8(Handle<Object> obj)
+{
+    jsvalue v;
+    
+    ManagedRef* ref = (ManagedRef*)obj->GetPointerFromInternalField(0); 
+    v.type = JSVALUE_TYPE_MANAGED;
+    v.length = ref->Id();
+    v.value.str = 0;
+
+    return v;
+}
     
 jsvalue JsEngine::AnyFromV8(Handle<Value> value)
 {
@@ -293,15 +328,10 @@ jsvalue JsEngine::AnyFromV8(Handle<Value> value)
     }
     else if (value->IsObject()) {
         Handle<Object> obj = Handle<Object>::Cast(value);
-        if (obj->InternalFieldCount() == 1) {
-            ManagedRef* ref = (ManagedRef*)obj->GetPointerFromInternalField(0); 
-            v.type = JSVALUE_TYPE_MANAGED;
-            v.length = ref->Id();
-        }
-        else {
-            v.type = JSVALUE_TYPE_WRAPPED;
-            v.value.ptr = new Persistent<Object>(Persistent<Object>::New(obj));
-        }
+        if (obj->InternalFieldCount() == 1)
+            v = ManagedFromV8(obj);
+        else
+            v = WrappedFromV8(obj);
     }
 
     return v;
