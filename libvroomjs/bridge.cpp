@@ -92,10 +92,23 @@ extern "C"
 
         return v;
     }    
+    
+    jsvalue jsvalue_alloc_array(const int32_t length)
+    {
+        jsvalue v;
+          
+        v.value.arr = new jsvalue[length];
+        if (v.value.arr != NULL) {
+            v.length = length;
+            v.type = JSVALUE_TYPE_ARRAY;
+        }
+
+        return v;
+    }        
                 
     void jsvalue_dispose(jsvalue value)
     {
-        if (value.type == JSVALUE_TYPE_STRING || value.type == JSVALUE_TYPE_UNKNOWN_ERROR) {
+        if (value.type == JSVALUE_TYPE_STRING || value.type == JSVALUE_TYPE_ERROR) {
             if (value.value.str != NULL)
                 delete value.value.str;
         }
