@@ -119,7 +119,7 @@ namespace VroomJs.Tests
         }
 
         [Test]
-        public void GetJsMixedProperty1()
+        public void GetMixedProperty1()
         {
             var t = new TestClass();
             js.SetVariable("o", t);
@@ -127,6 +127,26 @@ namespace VroomJs.Tests
             dynamic x = js.GetVariable("x");
             Assert.That(x.nested, Is.EqualTo(t));
             Assert.That(t.Int32Property, Is.EqualTo(42));
+        }
+
+        [Test]
+        public void SetJsIntegerProperty()
+        {
+            var v = 42;
+            js.Execute("var x = {}");
+            dynamic x = js.GetVariable("x");
+            x.the_answer = v;
+            Assert.That(js.Execute("x.the_answer"), Is.EqualTo(v));
+        }
+
+        [Test]
+        public void SetJsStringProperty()
+        {
+            var v = "This was set from managed code!";
+            js.Execute("var x = {}");
+            dynamic x = js.GetVariable("x");
+            x.a_string = v;
+            Assert.That(js.Execute("x.a_string"), Is.EqualTo(v));
         }
 
     }
