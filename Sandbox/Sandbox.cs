@@ -42,7 +42,8 @@ namespace Sandbox
         }
     }
 
-    class Simple {
+    class Simple 
+    {
         public int N { get; set; }
         public string S { get; set; }
         public string X {
