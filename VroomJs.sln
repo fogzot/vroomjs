@@ -203,6 +203,11 @@ Global
 		$33.inheritsSet = VisualStudio
 		$33.inheritsScope = text/plain
 		$33.scope = text/x-c++src
+		$0.TextStylePolicy = $34
+		$34.FileWidth = 132
+		$34.inheritsSet = VisualStudio
+		$34.inheritsScope = text/plain
+		$34.scope = text/x-chdr
 		outputpath = build
 	EndGlobalSection
 EndGlobal

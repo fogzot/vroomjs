@@ -54,6 +54,13 @@ namespace VroomJs.Tests
 
         [TestCase]
         [ExpectedException(typeof(JsException))]
+        public void JsObjectException()
+        {
+            js.Execute("throw {msg:'Error!'}");
+        }
+
+        [TestCase]
+        [ExpectedException(typeof(JsException))]
         public void CompilationException()
         {
             js.Execute("a+§");

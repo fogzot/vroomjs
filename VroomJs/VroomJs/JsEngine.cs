@@ -303,7 +303,10 @@ namespace VroomJs
                     if (v.Ptr != IntPtr.Zero)
                         return new JsException(Marshal.PtrToStringUni(v.Ptr));
                     return new JsInteropException("unknown error without reason");
-                    
+
+                case JsValueType.Error:
+                    return new JsException(Marshal.PtrToStringUni(v.Ptr));
+
                 case JsValueType.Managed:
                     return KeepAliveGet(v.Index);
 
