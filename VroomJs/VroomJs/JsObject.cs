@@ -48,17 +48,24 @@ namespace VroomJs
             get { return _ptr; }
         }
 
+        public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result)
+        {
+            result = _engine.InvokeMember(this, binder.Name, args);
+            return true;
+        }
+
         public override bool TryGetMember(GetMemberBinder binder, out object result)
         {
             result = _engine.GetPropertyValue(this, binder.Name);
             return true;
         }
 
-        public override bool TrySetMember (SetMemberBinder binder, object value)
+        public override bool TrySetMember(SetMemberBinder binder, object value)
         {
             _engine.SetPropertyValue(this, binder.Name, value);
             return true;
         }
+
 
     }
 }
