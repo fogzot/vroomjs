@@ -53,6 +53,14 @@ static Handle<Value> managed_call(const Arguments& args)
     return ref->Invoke(args);
 }
 
+static void managed_destroy(Persistent<Value> object, void* parameter)
+{
+    Persistent<Object> self = Persistent<Object>::Cast(object);
+    Local<External> wrap = Local<External>::Cast(self->GetInternalField(0));
+    delete (ManagedRef*)wrap->Value();
+    object.Dispose();
+}
+
 JsEngine* JsEngine::New()
 {
     JsEngine* engine = new JsEngine();
@@ -365,11 +373,11 @@ jsvalue JsEngine::AnyFromV8(Handle<Value> value)
         }
     }
     else if (value->IsFunction()) {
-    
+        // TODO: how do we represent this on the CLR side? Delegate?
     }
     else if (value->IsObject()) {
         Handle<Object> obj = Handle<Object>::Cast(value);
-        if (obj->InternalFieldCount() == 1)
+        if (obj->InternalFieldCount() ==     1)
             v = ManagedFromV8(obj);
         else
             v = WrappedFromV8(obj);
@@ -406,8 +414,9 @@ Handle<Value> JsEngine::AnyToV8(jsvalue v)
     
     if (v.type == JSVALUE_TYPE_MANAGED || v.type == JSVALUE_TYPE_MANAGED_ERROR) {
         ManagedRef* ref = new ManagedRef(this, v.length);
-        Local<Object> obj = (*(managed_template_))->NewInstance();
+        Persistent<Object> obj = Persistent<Object>::New((*(managed_template_))->NewInstance());
         obj->SetInternalField(0, External::New(ref));
+        obj.MakeWeak(NULL, managed_destroy);
         return obj;
     }
 
