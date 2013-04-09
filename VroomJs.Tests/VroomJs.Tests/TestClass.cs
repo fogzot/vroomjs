@@ -30,6 +30,11 @@ namespace VroomJs.Tests
         public int Int32Property { get; set; }
         public string StringProperty { get; set; }
         public TestClass NestedObject { get; set; }
+
+        public TestClass Method1(int i, string s)
+        {
+            return new TestClass { Int32Property = this.Int32Property + i, StringProperty = this.StringProperty + s };
+        }
     }
 }
 

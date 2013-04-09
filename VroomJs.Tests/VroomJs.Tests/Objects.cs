@@ -103,6 +103,19 @@ namespace VroomJs.Tests
         }
 
         [Test]
+        public void CallManagedMethod()
+        {
+            var t = new TestClass { Int32Property = 13, StringProperty = "Wow" };
+            js.SetVariable("o", t);
+            js.Execute("var r = o.Method1(29, '!')");
+            object r = js.GetVariable("r");
+            Assert.That(r, Is.AssignableTo<TestClass>());
+            TestClass c = (TestClass)r;
+            Assert.That(c.Int32Property, Is.EqualTo(42));
+            Assert.That(c.StringProperty, Is.EqualTo("Wow!"));
+        }
+
+        [Test]
         public void GetJsIntegerProperty()
         {
             js.Execute("var x = { the_answer: 42 }");
@@ -147,6 +160,19 @@ namespace VroomJs.Tests
             dynamic x = js.GetVariable("x");
             x.a_string = v;
             Assert.That(js.Execute("x.a_string"), Is.EqualTo(v));
+        }
+
+        [Test]
+        public void CallJsProperty()
+        {
+            js.Execute("var x = { f: function (a, b) { return [a*2, b+'!']; }}");
+            dynamic x = js.GetVariable("x");
+            object r = x.f(21, "Can't believe this worked");
+            Assert.That(r, Is.AssignableTo<object[]>());
+            object[] a = (object[])r;
+            Assert.That(a.Length, Is.EqualTo(2));
+            Assert.That(a[0], Is.EqualTo(42));
+            Assert.That(a[1], Is.EqualTo("Can't believe this worked!"));
         }
 
     }
