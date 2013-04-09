@@ -27,6 +27,8 @@
 
 using namespace v8;
 
+extern "C" jsvalue jsvalue_alloc_array(const int32_t length);
+
 static Handle<Value> managed_prop_get(Local<String> name, const AccessorInfo& info)
 {
     Local<Object> self = info.Holder();
@@ -41,6 +43,14 @@ static Handle<Value> managed_prop_set(Local<String> name, Local<Value> value, co
     Local<External> wrap = Local<External>::Cast(self->GetInternalField(0));
     ManagedRef* ref = (ManagedRef*)wrap->Value();
     return ref->SetPropertyValue(name, value);
+}
+
+static Handle<Value> managed_call(const Arguments& args)
+{
+    Local<Object> self = args.Holder();
+    Local<External> wrap = Local<External>::Cast(self->GetInternalField(0));
+    ManagedRef* ref = (ManagedRef*)wrap->Value();
+    return ref->Invoke(args);
 }
 
 JsEngine* JsEngine::New()
@@ -59,6 +69,7 @@ JsEngine* JsEngine::New()
         Handle<ObjectTemplate> o = ObjectTemplate::New();
         o->SetInternalFieldCount(1);
         o->SetNamedPropertyHandler(managed_prop_get, managed_prop_set);
+        o->SetCallAsFunctionHandler(managed_call);
         Persistent<ObjectTemplate> p = Persistent<ObjectTemplate>::New(o);
         engine->managed_template_ = new Persistent<ObjectTemplate>(p);
     }
@@ -89,11 +100,9 @@ jsvalue JsEngine::Execute(const uint16_t* str)
     (*context_)->Enter();
         
     HandleScope scope;
-        
-    Handle<String> source = String::New(str);
-
     TryCatch trycatch;
-    
+        
+    Handle<String> source = String::New(str);    
     Handle<Script> script = Script::Compile(source);          
     if (!script.IsEmpty()) {
         Local<Value> result = script->Run();
@@ -139,7 +148,6 @@ jsvalue JsEngine::GetVariable(const uint16_t* name)
     (*context_)->Enter();
         
     HandleScope scope;
-
     TryCatch trycatch;
                 
     Local<Value> value = (*context_)->Global()->Get(String::New(name));
@@ -164,7 +172,6 @@ jsvalue JsEngine::GetPropertyValue(Persistent<Object>* obj, const uint16_t* name
     (*context_)->Enter();
         
     HandleScope scope;
-
     TryCatch trycatch;
                 
     Local<Value> value = (*obj)->Get(String::New(name));
@@ -199,6 +206,41 @@ jsvalue JsEngine::SetPropertyValue(Persistent<Object>* obj, const uint16_t* name
     return AnyFromV8(Null());
 }
 
+jsvalue JsEngine::InvokeProperty(Persistent<Object>* obj, const uint16_t* name, jsvalue args)
+{
+    jsvalue v;
+
+    Locker locker(isolate_);
+    Isolate::Scope isolate_scope(isolate_);
+    (*context_)->Enter();
+        
+    HandleScope scope;    
+    TryCatch trycatch;
+        
+    Local<Value> prop = (*obj)->Get(String::New(name));
+    if (prop.IsEmpty() || !prop->IsFunction()) {
+        v = StringFromV8(String::New("property not found or isn't a function"));
+        v.type = JSVALUE_TYPE_ERROR;   
+    }
+    else {
+        Local<Value> argv[args.length];
+        ArrayToV8Args(args, argv);
+        // TODO: Check ArrayToV8Args return value (but right now can't fail, right?)                   
+        Local<Function> func = Local<Function>::Cast(prop);
+        Local<Value> value = func->Call(*obj, args.length, argv);
+        if (!value.IsEmpty()) {
+            v = AnyFromV8(value);        
+        }
+        else {
+            v = ErrorFromV8(trycatch);
+        }         
+    }
+    
+    (*context_)->Exit();
+    
+    return v;
+}
+
 jsvalue JsEngine::ErrorFromV8(TryCatch& trycatch)
 {
     jsvalue v;
@@ -215,6 +257,7 @@ jsvalue JsEngine::ErrorFromV8(TryCatch& trycatch)
     // this is far from perfect because we ignore both the Message object and the
     // stack stack trace. If the exception is not an object (but just a string,
     // for example) we convert it with toString() and return that as an Exception.
+    // TODO: return a composite/special object with stack trace information.
     
     if (exception->IsObject()) {
         Local<Object> obj = Local<Object>::Cast(exception);
@@ -223,8 +266,6 @@ jsvalue JsEngine::ErrorFromV8(TryCatch& trycatch)
             v.type = JSVALUE_TYPE_MANAGED_ERROR;
             v.length = ref->Id();
         }
-        // 
-        // TODO: return a composite/special object with stack trace information.
         else  {
             v = WrappedFromV8(obj);
             v.type = JSVALUE_TYPE_WRAPPED_ERROR;        
@@ -371,4 +412,27 @@ Handle<Value> JsEngine::AnyToV8(jsvalue v)
     }
 
     return Null();
+}
+
+int32_t JsEngine::ArrayToV8Args(jsvalue value, Handle<Value> preallocatedArgs[])
+{
+    if (value.type != JSVALUE_TYPE_ARRAY)
+        return -1;
+        
+    for (int i=0 ; i < value.length ; i++) {
+        preallocatedArgs[i] = AnyToV8(value.value.arr[i]);
+    }
+    
+    return value.length;
+}
+
+jsvalue JsEngine::ArrayFromArguments(const Arguments& args)
+{
+    jsvalue v = jsvalue_alloc_array(args.Length());
+    
+    for (int i=0 ; i < v.length ; i++) {
+        v.value.arr[i] = AnyFromV8(args[i]);
+    }
+    
+    return v;
 }

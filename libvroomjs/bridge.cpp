@@ -31,13 +31,15 @@ extern "C"
 {
     JsEngine* jsengine_new(keepalive_remove_f keepalive_remove, 
                            keepalive_get_property_value_f keepalive_get_property_value,
-                           keepalive_set_property_value_f keepalive_set_property_value)
+                           keepalive_set_property_value_f keepalive_set_property_value,
+                           keepalive_invoke_f keepalive_invoke)
     {
         JsEngine* engine = JsEngine::New();
         if (engine != NULL) {
             engine->SetRemoveDelegate(keepalive_remove);
             engine->SetGetPropertyValueDelegate(keepalive_get_property_value);
             engine->SetSetPropertyValueDelegate(keepalive_set_property_value);
+            engine->SetInvokeDelegate(keepalive_invoke);
         }
         return engine;
     }
@@ -72,6 +74,11 @@ extern "C"
     {
         return engine->SetPropertyValue(obj, name, value);
     }    
+    
+    jsvalue jsengine_invoke_property(JsEngine* engine, Persistent<Object>* obj, const uint16_t* name, jsvalue args)
+    {
+        return engine->InvokeProperty(obj, name, args);
+    }        
 
     jsvalue jsvalue_alloc_string(const uint16_t* str)
     {

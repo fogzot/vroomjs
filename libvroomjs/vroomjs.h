@@ -86,6 +86,7 @@ extern "C"
     typedef void (*keepalive_remove_f) (int id);
     typedef jsvalue (*keepalive_get_property_value_f) (int id, uint16_t* name);
     typedef jsvalue (*keepalive_set_property_value_f) (int id, uint16_t* name, jsvalue value);
+    typedef jsvalue (*keepalive_invoke_f) (int id, jsvalue args);
 }
 
 // JsEngine is a single isolated v8 interpreter and is the referenced as an IntPtr
@@ -96,25 +97,36 @@ class JsEngine {
     inline void SetRemoveDelegate(keepalive_remove_f delegate) { keepalive_remove_ = delegate; }
     inline void SetGetPropertyValueDelegate(keepalive_get_property_value_f delegate) { keepalive_get_property_value_ = delegate; }
     inline void SetSetPropertyValueDelegate(keepalive_set_property_value_f delegate) { keepalive_set_property_value_ = delegate; }
+    inline void SetInvokeDelegate(keepalive_invoke_f delegate) { keepalive_invoke_ = delegate; }
     
+    // Call delegates into managed code.
     inline void CallRemove(int id) { keepalive_remove_(id); }
-    inline jsvalue CallGetPropertyValue(int id, uint16_t* name) { return keepalive_get_property_value_(id, name); }
-    inline jsvalue CallSetPropertyValue(int id, uint16_t* name, jsvalue value) { return keepalive_set_property_value_(id, name, value); }
+    inline jsvalue CallGetPropertyValue(int32_t id, uint16_t* name) { return keepalive_get_property_value_(id, name); }
+    inline jsvalue CallSetPropertyValue(int32_t id, uint16_t* name, jsvalue value) { return keepalive_set_property_value_(id, name, value); }
+    inline jsvalue CallInvoke(int32_t id, jsvalue args) { return keepalive_invoke_(id, args); }
     
-    jsvalue Execute(const uint16_t* str);
-    
+    // Called by bridge to execute JS from managed code.
+    jsvalue Execute(const uint16_t* str);    
     jsvalue GetVariable(const uint16_t* name);
     jsvalue SetVariable(const uint16_t* name, jsvalue value);
     jsvalue GetPropertyValue(Persistent<Object>* obj, const uint16_t* name);
     jsvalue SetPropertyValue(Persistent<Object>* obj, const uint16_t* name, jsvalue value);
-         
+    jsvalue InvokeProperty(Persistent<Object>* obj, const uint16_t* name, jsvalue args);
+    
+    // Conversions.
     Handle<Value> AnyToV8(jsvalue value); 
     jsvalue ErrorFromV8(TryCatch& trycatch);
     jsvalue StringFromV8(Handle<Value> value);
     jsvalue WrappedFromV8(Handle<Object> obj);
     jsvalue ManagedFromV8(Handle<Object> obj);
     jsvalue AnyFromV8(Handle<Value> value);
-         
+    
+    // Needed to create an array of args on the stack for calling functions.
+    int32_t ArrayToV8Args(jsvalue value, Handle<Value> preallocatedArgs[]);     
+    
+    // Converts JS function Arguments to an array of jsvalue to call managed code.
+    jsvalue ArrayFromArguments(const Arguments& args);
+    
     void Dispose();
     
     static JsEngine* New();
@@ -128,6 +140,7 @@ class JsEngine {
     keepalive_remove_f keepalive_remove_;
     keepalive_get_property_value_f keepalive_get_property_value_;
     keepalive_set_property_value_f keepalive_set_property_value_;
+    keepalive_invoke_f keepalive_invoke_;
 };
 
 class ManagedRef {
@@ -138,6 +151,7 @@ class ManagedRef {
     
     Handle<Value> GetPropertyValue(Local<String> name);
     Handle<Value> SetPropertyValue(Local<String> name, Local<Value> value);
+    Handle<Value> Invoke(const Arguments& args);
     
     ~ManagedRef() { engine_->CallRemove(id_); }
     

@@ -64,3 +64,21 @@ Handle<Value> ManagedRef::SetPropertyValue(Local<String> name, Local<Value> valu
     
     return res;
 }
+
+Handle<Value> ManagedRef::Invoke(const Arguments& args)
+{
+    Handle<Value> res;
+        
+    jsvalue a = engine_->ArrayFromArguments(args);
+    jsvalue r = engine_->CallInvoke(id_, a);
+    if (r.type == JSVALUE_TYPE_MANAGED_ERROR)
+        res = ThrowException(engine_->AnyToV8(r));
+    else
+        res = engine_->AnyToV8(r);
+    
+    // We don't need the jsvalue anymore and the CLR side never reuse them.
+    jsvalue_dispose(a);
+    jsvalue_dispose(r);
+    
+    return res;
+}
