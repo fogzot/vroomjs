@@ -23,38 +23,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-using System;
-using System.Runtime.InteropServices;
-
 namespace VroomJs
 { 
-    [StructLayout(LayoutKind.Explicit)]
-	struct JsValue
+	class WeakDelegate
 	{
-        [FieldOffset(0)] public int    I32;
-        [FieldOffset(0)] public long   I64;
-        [FieldOffset(0)] public double Num;
-        [FieldOffset(0)] public IntPtr Ptr;
-
-        // See JsValueType, marshaled as integer.
-        [FieldOffset(8)] public JsValueType Type;
-
-        // Length of array or string or managed object keepalive index.
-        [FieldOffset(12)] public int Length;
-        [FieldOffset(12)] public int Index;
-
-        public static JsValue Null {
-            get { return new JsValue(); }
-        }
-
-        public static JsValue Error(int slot)
+        public WeakDelegate(object target, string name)
         {
-            return new JsValue { Type = JsValueType.ManagedError, Index = slot };
+            Target = target;
+            MethodName = name;
         }
 
-        public override string ToString ()
-        {
-            return string.Format("[JsValue({0})]", Type);
-        }
+        public object Target;
+        public string MethodName;
     }
 }

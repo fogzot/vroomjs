@@ -50,7 +50,7 @@ namespace VroomJs
 
         public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result)
         {
-            result = _engine.InvokeMember(this, binder.Name, args);
+            result = _engine.InvokeProperty(this, binder.Name, args);
             return true;
         }
 

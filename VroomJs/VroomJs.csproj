@@ -41,6 +41,7 @@
     <Compile Include="VroomJs\JsInteropException.cs" />
     <Compile Include="VroomJs\JsObject.cs" />
     <Compile Include="VroomJs\JsConvert.cs" />
+    <Compile Include="VroomJs\WeakDelegate.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
