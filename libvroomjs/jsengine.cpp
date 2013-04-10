@@ -406,7 +406,17 @@ Handle<Value> JsEngine::AnyToV8(jsvalue v)
     if (v.type == JSVALUE_TYPE_DATE) {
         return Date::New(v.value.num);
     }
+
+    // Arrays are converted to JS native arrays.
     
+    if (v.type == JSVALUE_TYPE_ARRAY) {
+        Local<Array> a = Array::New(v.length);
+        for(int i = 0; i < v.length; i++) {
+            a->Set(i, AnyToV8(v.value.arr[i]));
+        }
+        return a;        
+    }
+        
     // This is an ID to a managed object that lives inside the JsEngine keep-alive
     // cache. We just wrap it and the pointer to the engine inside an External. A
     // managed error is still a CLR object so it is wrapped exactly as a normal
