@@ -24,7 +24,6 @@
 // THE SOFTWARE.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -78,7 +77,7 @@ namespace VroomJs
 
         public JsEngine()
 		{
-            _keepalives = new Dictionary<int,object>();
+            _keepalives = new KeepAliveDictionaryStore();
 
             _keepalive_remove = new KeepaliveRemoveDelegate(KeepAliveRemove);
             _keepalive_get_property_value = new KeepAliveGetPropertyValueDelegate(KeepAliveGetPropertyValue);
@@ -97,14 +96,22 @@ namespace VroomJs
         JsConvert _convert;
 
         // Keep objects passed to V8 alive even if no other references exist.
-        Dictionary<int,object> _keepalives;
-        int _keepalives_count;
+        IKeepAliveStore _keepalives;
 
         // Make sure the delegates we pass to the C++ engine won't fly away during a GC.
         KeepaliveRemoveDelegate _keepalive_remove;
         KeepAliveGetPropertyValueDelegate _keepalive_get_property_value;
         KeepAliveSetPropertyValueDelegate _keepalive_set_property_value;
         KeepAliveInvokeDelegate _keepalive_invoke;
+
+        public JsEngineStats GetStats()
+        {
+            return new JsEngineStats {
+                KeepAliveMaxSlots = _keepalives.MaxSlots,
+                KeepAliveAllocatedSlots = _keepalives.AllocatedSlots,
+                KeepAliveUsedSlots = _keepalives.UsedSlots
+            };
+        }
 
         public object Execute(string code)
         {
@@ -147,7 +154,9 @@ namespace VroomJs
 
             CheckDisposed();
 
-            jsengine_set_variable(_engine, name, _convert.ToJsValue(value));
+            JsValue a = _convert.ToJsValue(value);
+            jsengine_set_variable(_engine, name, a);
+            jsvalue_dispose(a);
 
             // TODO: Check the result of the operation for errors.
         }
@@ -186,9 +195,11 @@ namespace VroomJs
             if (obj.Ptr == IntPtr.Zero)
                 throw new JsInteropException("wrapped V8 object is empty (IntPtr is Zero)");
 
-            JsValue v = jsengine_set_property_value(_engine, obj.Ptr, name, _convert.ToJsValue(value));
+            JsValue a = _convert.ToJsValue(value);
+            JsValue v = jsengine_set_property_value(_engine, obj.Ptr, name, a);
             object res = _convert.FromJsValue(v);
             jsvalue_dispose(v);
+            jsvalue_dispose(a);
 
             Exception e = res as JsException;
             if (e != null)
@@ -222,29 +233,21 @@ namespace VroomJs
             return res;
         }
 
-        internal int KeepAliveSet(object obj)
+        #region Keep-alive management and callbacks.
+
+        internal int KeepAliveAdd(object obj)
         {
-            _keepalives.Add(_keepalives_count, obj);
-            return _keepalives_count++;
+            return _keepalives.Add(obj);
         }
 
         internal object KeepAliveGet(int slot)
         {
-            object obj;
-            if (_keepalives.TryGetValue(slot, out obj))
-                return obj;
-            return null;
+            return _keepalives.Get(slot);
         }
 
         internal void KeepAliveRemove(int slot)
         {
-            var obj = KeepAliveGet(slot);
-            if (obj != null) {
-                var disposable = obj as IDisposable;
-                if (disposable != null)
-                    disposable.Dispose();
-                _keepalives.Remove(slot);
-            }
+            _keepalives.Remove(slot);
         }
 
         JsValue KeepAliveGetPropertyValue(int slot, [MarshalAs(UnmanagedType.LPWStr)] string name)
@@ -269,27 +272,28 @@ namespace VroomJs
 
                     const BindingFlags mFlags = BindingFlags.Instance|BindingFlags.Public
                                                |BindingFlags.InvokeMethod|BindingFlags.FlattenHierarchy;
+                    // TODO: This is probably slooow.
                     if (type.GetMethods(mFlags).Any(x => x.Name == name))
                         return _convert.ToJsValue(new WeakDelegate(obj, name));
 
                     // Else an error.
 
-                    return JsValue.Error(KeepAliveSet(
+                    return JsValue.Error(KeepAliveAdd(
                         new InvalidOperationException(String.Format("property not found on {0}: {1} ", type, name)))); 
                 }
                 catch (TargetInvocationException e) {
                     // Client code probably isn't interested in the exception part related to
                     // reflection, so we unwrap it and pass to V8 only the real exception thrown.
                     if (e.InnerException != null)
-                        return JsValue.Error(KeepAliveSet(e.InnerException));
+                        return JsValue.Error(KeepAliveAdd(e.InnerException));
                     throw;
                 }
                 catch (Exception e) {
-                    return JsValue.Error(KeepAliveSet(e));
+                    return JsValue.Error(KeepAliveAdd(e));
                 }
             }
 
-            return JsValue.Error(KeepAliveSet(new IndexOutOfRangeException("invalid keepalive slot: " + slot))); 
+            return JsValue.Error(KeepAliveAdd(new IndexOutOfRangeException("invalid keepalive slot: " + slot))); 
         }
 
         JsValue KeepAliveSetPropertyValue(int slot, [MarshalAs(UnmanagedType.LPWStr)] string name, JsValue value)
@@ -308,15 +312,15 @@ namespace VroomJs
                         return JsValue.Null;
                     }
 
-                    return JsValue.Error(KeepAliveSet(
+                    return JsValue.Error(KeepAliveAdd(
                         new InvalidOperationException(String.Format("property not found on {0}: {1} ", type, name)))); 
                 }
                 catch (Exception e) {
-                    return JsValue.Error(KeepAliveSet(e));
+                    return JsValue.Error(KeepAliveAdd(e));
                 }
             }
 
-            return JsValue.Error(KeepAliveSet(new IndexOutOfRangeException("invalid keepalive slot: " + slot))); 
+            return JsValue.Error(KeepAliveAdd(new IndexOutOfRangeException("invalid keepalive slot: " + slot))); 
         }
 
         JsValue KeepAliveInvoke(int slot, JsValue args)
@@ -336,12 +340,14 @@ namespace VroomJs
                     return _convert.ToJsValue(type.InvokeMember(obj.MethodName, flags, null, obj.Target, a));
                 }
                 catch (Exception e) {
-                    return JsValue.Error(KeepAliveSet(e));
+                    return JsValue.Error(KeepAliveAdd(e));
                 }
             }
 
-            return JsValue.Error(KeepAliveSet(new IndexOutOfRangeException("invalid keepalive slot: " + slot))); 
+            return JsValue.Error(KeepAliveAdd(new IndexOutOfRangeException("invalid keepalive slot: " + slot))); 
         }
+
+        #endregion
 
         #region IDisposable implementation
 
@@ -353,6 +359,11 @@ namespace VroomJs
 
         protected virtual void Dispose(bool disposing)
         {
+            if (disposing) {
+                _convert = null;
+                _keepalives = null;
+            }
+
             if (_engine.Handle != IntPtr.Zero)
                 jsengine_dispose(_engine);
             _engine = new HandleRef(null, IntPtr.Zero);

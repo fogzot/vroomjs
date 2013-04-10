@@ -166,7 +166,7 @@ namespace VroomJs
             // because adding the same object more than one time acts more or less as
             // reference counting.
 
-            return new JsValue { Type = JsValueType.Managed, Index = _engine.KeepAliveSet(obj) };
+            return new JsValue { Type = JsValueType.Managed, Index = _engine.KeepAliveAdd(obj) };
         }
     }
 }

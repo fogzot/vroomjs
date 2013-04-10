@@ -42,6 +42,9 @@
     <Compile Include="VroomJs\JsObject.cs" />
     <Compile Include="VroomJs\JsConvert.cs" />
     <Compile Include="VroomJs\WeakDelegate.cs" />
+    <Compile Include="VroomJs\JsEngineStats.cs" />
+    <Compile Include="VroomJs\IKeepAliveStore.cs" />
+    <Compile Include="VroomJs\KeepAliveDictionaryStore.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
