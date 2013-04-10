@@ -139,6 +139,21 @@ namespace VroomJs.Tests
             js.SetVariable("foo", dt);
             Assert.That(js.GetVariable("foo") , Is.EqualTo(dt));
         }
+
+        [TestCase]
+        public void SetGetVariableArray()
+        {
+            var v = new object[] { "foobar", 3.14159, 42 };
+            js.SetVariable("foo", v);
+            js.Execute("foo[1] += 2.71828");
+            object r = js.GetVariable("foo");
+            Assert.That(r, Is.AssignableTo<object[]>());
+            object[] a = (object[])r;
+            Assert.That(a.Length, Is.EqualTo(3));
+            Assert.That(a[0], Is.EqualTo("foobar"));
+            Assert.That(a[1], Is.EqualTo(5.85987));
+            Assert.That(a[2], Is.EqualTo(42));
+        }
     }
 }
 
