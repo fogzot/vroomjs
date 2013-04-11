@@ -49,6 +49,9 @@ namespace VroomJs
         static extern void jsengine_dispose(HandleRef engine);
 
         [DllImport("vroomjs")]
+        static extern void jsengine_force_gc();
+
+        [DllImport("vroomjs")]
         static extern JsValue jsengine_execute(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string str);
 
         [DllImport("vroomjs")]
@@ -103,6 +106,11 @@ namespace VroomJs
         KeepAliveGetPropertyValueDelegate _keepalive_get_property_value;
         KeepAliveSetPropertyValueDelegate _keepalive_set_property_value;
         KeepAliveInvokeDelegate _keepalive_invoke;
+
+        public void Flush()
+        {
+            jsengine_force_gc();
+        }
 
         public JsEngineStats GetStats()
         {
