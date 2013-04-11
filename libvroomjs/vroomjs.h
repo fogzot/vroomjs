@@ -113,7 +113,8 @@ class JsEngine {
     jsvalue SetPropertyValue(Persistent<Object>* obj, const uint16_t* name, jsvalue value);
     jsvalue InvokeProperty(Persistent<Object>* obj, const uint16_t* name, jsvalue args);
     
-    // Conversions.
+    // Conversions. Note that all the conversion functions should be called
+    // with an HandleScope already on the stack or sill misarabily fail.
     Handle<Value> AnyToV8(jsvalue value); 
     jsvalue ErrorFromV8(TryCatch& trycatch);
     jsvalue StringFromV8(Handle<Value> value);
@@ -134,9 +135,9 @@ class JsEngine {
  private:             
     inline JsEngine() {}
    
-    v8::Isolate *isolate_;
-    v8::Persistent<v8::Context> *context_;
-    v8::Persistent<v8::ObjectTemplate> *managed_template_;
+    Isolate *isolate_;
+    Persistent<Context> *context_;
+    Persistent<ObjectTemplate> *managed_template_;
     keepalive_remove_f keepalive_remove_;
     keepalive_get_property_value_f keepalive_get_property_value_;
     keepalive_set_property_value_f keepalive_set_property_value_;

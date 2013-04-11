@@ -31,30 +31,38 @@ extern "C" jsvalue jsvalue_alloc_array(const int32_t length);
 
 static Handle<Value> managed_prop_get(Local<String> name, const AccessorInfo& info)
 {
+    HandleScope scope;
+    
     Local<Object> self = info.Holder();
     Local<External> wrap = Local<External>::Cast(self->GetInternalField(0));
     ManagedRef* ref = (ManagedRef*)wrap->Value();
-    return ref->GetPropertyValue(name);
+    return scope.Close(ref->GetPropertyValue(name));
 }
 
 static Handle<Value> managed_prop_set(Local<String> name, Local<Value> value, const AccessorInfo& info)
 {
+    HandleScope scope;
+    
     Local<Object> self = info.Holder();
     Local<External> wrap = Local<External>::Cast(self->GetInternalField(0));
     ManagedRef* ref = (ManagedRef*)wrap->Value();
-    return ref->SetPropertyValue(name, value);
+    return scope.Close(ref->SetPropertyValue(name, value));
 }
 
 static Handle<Value> managed_call(const Arguments& args)
 {
+    HandleScope scope;
+    
     Local<Object> self = args.Holder();
     Local<External> wrap = Local<External>::Cast(self->GetInternalField(0));
     ManagedRef* ref = (ManagedRef*)wrap->Value();
-    return ref->Invoke(args);
+    return scope.Close(ref->Invoke(args));
 }
 
 static void managed_destroy(Persistent<Value> object, void* parameter)
 {
+    HandleScope scope;
+    
     Persistent<Object> self = Persistent<Object>::Cast(object);
     Local<External> wrap = Local<External>::Cast(self->GetInternalField(0));
     delete (ManagedRef*)wrap->Value();
@@ -253,6 +261,8 @@ jsvalue JsEngine::ErrorFromV8(TryCatch& trycatch)
 {
     jsvalue v;
 
+    HandleScope scope;
+    
     Local<Value> exception = trycatch.Exception();
 
     v.type = JSVALUE_TYPE_UNKNOWN_ERROR;        
