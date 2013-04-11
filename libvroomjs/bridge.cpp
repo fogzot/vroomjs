@@ -50,6 +50,11 @@ extern "C"
         delete engine;
     }
     
+    void jsengine_force_gc()
+    {
+        while(!V8::IdleNotification()) {};
+    }
+    
     jsvalue jsengine_execute(JsEngine* engine, const uint16_t* str)
     {
         return engine->Execute(str);
