@@ -148,12 +148,26 @@ namespace VroomJs.Tests
             js.Execute("foo[1] += 2.71828");
             object r = js.GetVariable("foo");
             Assert.That(r, Is.AssignableTo<object[]>());
-            object[] a = (object[])r;
+            var a = (object[])r;
             Assert.That(a.Length, Is.EqualTo(3));
             Assert.That(a[0], Is.EqualTo("foobar"));
             Assert.That(a[1], Is.EqualTo(5.85987));
             Assert.That(a[2], Is.EqualTo(42));
         }
+
+        [TestCase]
+        public void ObjectCount()
+        {   
+            // Apparently there is no safe way to force a full GC on the JS side.
+            // We will check that the number of live objects _at least_ got lower
+            // than what we created.
+            var dt = new TestClass();
+            for (int i=0 ; i < 100000 ; i++)
+                js.SetVariable("foo", dt);
+            js.SetVariable("foo", null);
+            js.Flush();
+            Assert.That(js.GetStats().KeepAliveUsedSlots , Is.LessThan(80000));
+        }
+
     }
 }
-
