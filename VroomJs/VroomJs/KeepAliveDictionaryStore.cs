@@ -69,5 +69,10 @@ namespace VroomJs
                 _store.Remove(slot);
             }
         }
+
+        public void Clear()
+        {
+            _store.Clear();
+        }
     }
 }

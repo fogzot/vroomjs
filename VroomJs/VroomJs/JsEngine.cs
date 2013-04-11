@@ -78,6 +78,9 @@ namespace VroomJs
         [DllImport("vroomjs")]
         static internal extern void jsvalue_dispose(JsValue value);
 
+        [DllImport("vroomjs")]
+        static internal extern void jswrapped_dispose(IntPtr ptr);
+
         public JsEngine()
 		{
             _keepalives = new KeepAliveDictionaryStore();
@@ -95,17 +98,17 @@ namespace VroomJs
             _convert = new JsConvert(this);
 		}
 
-        HandleRef _engine;
-        JsConvert _convert;
+        readonly HandleRef _engine;
+        readonly JsConvert _convert;
 
         // Keep objects passed to V8 alive even if no other references exist.
-        IKeepAliveStore _keepalives;
+        readonly IKeepAliveStore _keepalives;
 
         // Make sure the delegates we pass to the C++ engine won't fly away during a GC.
-        KeepaliveRemoveDelegate _keepalive_remove;
-        KeepAliveGetPropertyValueDelegate _keepalive_get_property_value;
-        KeepAliveSetPropertyValueDelegate _keepalive_set_property_value;
-        KeepAliveInvokeDelegate _keepalive_invoke;
+        readonly KeepaliveRemoveDelegate _keepalive_remove;
+        readonly KeepAliveGetPropertyValueDelegate _keepalive_get_property_value;
+        readonly KeepAliveSetPropertyValueDelegate _keepalive_set_property_value;
+        readonly KeepAliveInvokeDelegate _keepalive_invoke;
 
         public void Flush()
         {
@@ -359,6 +362,8 @@ namespace VroomJs
 
         #region IDisposable implementation
 
+        bool _disposed;
+
         public void Dispose()
         {
             Dispose(true);
@@ -367,25 +372,28 @@ namespace VroomJs
 
         protected virtual void Dispose(bool disposing)
         {
+            CheckDisposed();
+
+            _disposed = true;
+
             if (disposing) {
-                _convert = null;
-                _keepalives = null;
+                _keepalives.Clear();
             }
 
             if (_engine.Handle != IntPtr.Zero)
                 jsengine_dispose(_engine);
-            _engine = new HandleRef(null, IntPtr.Zero);
         }
 
         void CheckDisposed()
         {
-            if (_engine.Handle == IntPtr.Zero)
-                throw new ObjectDisposedException("engine already disposed");
+            if (_disposed)
+                throw new ObjectDisposedException("JsEngine:" + _engine.Handle);
         }
 
         ~JsEngine()
         {
-            Dispose(false);
+            if (!_disposed)
+                Dispose(false);
         }
 
         #endregion

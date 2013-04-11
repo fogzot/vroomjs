@@ -66,7 +66,33 @@ namespace VroomJs
             return true;
         }
 
+        #region IDisposable implementation
 
+        bool _disposed;
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+                throw new ObjectDisposedException("JsObject:" + _ptr);
+
+            _disposed = true;
+
+            JsEngine.jswrapped_dispose(_ptr);
+        }
+
+        ~JsObject()
+        {
+            if (_disposed)
+                Dispose(false);
+        }
+
+        #endregion
     }
 }
 
