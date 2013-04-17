@@ -40,3 +40,23 @@ Create and return a Javascript object, then call a method on it:
 		// "What is the answer to ...? The answer is: 42"
 		Console.WriteLine(x.tellme("What is the answer to ...?"));
 	}
+
+Access properties and call methods on CLR objects from Javascript:
+
+	class Test
+	{
+		public int Value { get; set; }
+		public void PrintValue(string msg)
+		{
+			Console.WriteLine(msg+" "+Value);
+		}
+	}
+	
+	using (var js = new JsEngine()) {
+		js.SetVariable("m", new Test());
+		// Sets the property from Javascript.
+		js.Execute("m.Value = 42");
+		// Call a method on the CLR object from Javascript. This prints:
+		// "And the answer is (again!): 42"
+		js.Execute("m.PrintValue('And the answer is (again!):')");
+	}
