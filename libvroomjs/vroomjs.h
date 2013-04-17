@@ -94,6 +94,8 @@ extern "C"
 
 class JsEngine {
  public:
+    static JsEngine* New();
+ 
     inline void SetRemoveDelegate(keepalive_remove_f delegate) { keepalive_remove_ = delegate; }
     inline void SetGetPropertyValueDelegate(keepalive_get_property_value_f delegate) { keepalive_get_property_value_ = delegate; }
     inline void SetSetPropertyValueDelegate(keepalive_set_property_value_f delegate) { keepalive_set_property_value_ = delegate; }
@@ -128,10 +130,11 @@ class JsEngine {
     // Converts JS function Arguments to an array of jsvalue to call managed code.
     jsvalue ArrayFromArguments(const Arguments& args);
     
-    void Dispose();
+    // Dispose a Persistent<Object> that was pinned on the CLR side by JsObject.
+    void DisposeObject(Persistent<Object>* obj);
     
-    static JsEngine* New();
-            
+    void Dispose();
+                
  private:             
     inline JsEngine() {}
    

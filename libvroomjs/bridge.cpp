@@ -50,6 +50,13 @@ extern "C"
         delete engine;
     }
     
+    void jsengine_dispose_object(JsEngine* engine, Persistent<Object>* obj)
+    {
+        if (engine != NULL)
+            engine->DisposeObject(obj);
+        delete obj;
+    }     
+    
     void jsengine_force_gc()
     {
         while(!V8::IdleNotification()) {};
@@ -130,5 +137,5 @@ extern "C"
             if (value.value.arr != NULL)
                 delete value.value.arr;
         }            
-    }    
+    }       
 }

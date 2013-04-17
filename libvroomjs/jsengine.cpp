@@ -107,6 +107,17 @@ void JsEngine::Dispose()
     isolate_->Dispose();
 }
 
+void JsEngine::DisposeObject(Persistent<Object>* obj)
+{
+    Locker locker(isolate_);
+    Isolate::Scope isolate_scope(isolate_);
+    (*context_)->Enter();
+    
+    obj->Dispose();
+    
+    (*context_)->Exit();
+}
+
 jsvalue JsEngine::Execute(const uint16_t* str)
 {
     jsvalue v;
@@ -318,6 +329,11 @@ jsvalue JsEngine::WrappedFromV8(Handle<Object> obj)
     
     v.type = JSVALUE_TYPE_WRAPPED;
     v.length = 0;
+    
+    // A Persistent<Object> is exactly the size of an IntPtr, right?
+    // If not we're in deep deep trouble (on IA32 and AMD64 should be).
+    // We should even cast it to void* because C++ doesn't allow to put
+    // it in a union: going scary and scarier here.    
     v.value.ptr = new Persistent<Object>(Persistent<Object>::New(obj));
 
     return v;
