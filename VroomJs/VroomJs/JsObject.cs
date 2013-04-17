@@ -38,14 +38,14 @@ namespace VroomJs
                 throw new ArgumentException("can't wrap an empty object (ptr is Zero)", "ptr");
 
             _engine = engine;
-            _ptr = ptr;
+            _handle = ptr;
         }
 
         readonly JsEngine _engine;
-        readonly IntPtr _ptr;
+        readonly IntPtr _handle;
 
-        public IntPtr Ptr {
-            get { return _ptr; }
+        public IntPtr Handle {
+            get { return _handle; }
         }
 
         public override bool TryInvokeMember(InvokeMemberBinder binder, object[] args, out object result)
@@ -79,11 +79,11 @@ namespace VroomJs
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed)
-                throw new ObjectDisposedException("JsObject:" + _ptr);
+                throw new ObjectDisposedException("JsObject:" + _handle);
 
             _disposed = true;
 
-            JsEngine.jswrapped_dispose(_ptr);
+            _engine.DisposeObject(this);
         }
 
         ~JsObject()

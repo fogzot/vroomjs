@@ -52,6 +52,9 @@ namespace VroomJs
         static extern void jsengine_force_gc();
 
         [DllImport("vroomjs")]
+        static extern void jsengine_dispose_object(HandleRef engine, IntPtr obj);
+
+        [DllImport("vroomjs")]
         static extern JsValue jsengine_execute(HandleRef engine, [MarshalAs(UnmanagedType.LPWStr)] string str);
 
         [DllImport("vroomjs")]
@@ -77,9 +80,6 @@ namespace VroomJs
 
         [DllImport("vroomjs")]
         static internal extern void jsvalue_dispose(JsValue value);
-
-        [DllImport("vroomjs")]
-        static internal extern void jswrapped_dispose(IntPtr ptr);
 
         public JsEngine()
 		{
@@ -109,11 +109,6 @@ namespace VroomJs
         readonly KeepAliveGetPropertyValueDelegate _keepalive_get_property_value;
         readonly KeepAliveSetPropertyValueDelegate _keepalive_set_property_value;
         readonly KeepAliveInvokeDelegate _keepalive_invoke;
-
-        public void Flush()
-        {
-            jsengine_force_gc();
-        }
 
         public JsEngineStats GetStats()
         {
@@ -181,10 +176,10 @@ namespace VroomJs
 
             CheckDisposed();
 
-            if (obj.Ptr == IntPtr.Zero)
+            if (obj.Handle == IntPtr.Zero)
                 throw new JsInteropException("wrapped V8 object is empty (IntPtr is Zero)");
 
-            JsValue v = jsengine_get_property_value(_engine, obj.Ptr, name);
+            JsValue v = jsengine_get_property_value(_engine, obj.Handle, name);
             object res = _convert.FromJsValue(v);
             jsvalue_dispose(v);
 
@@ -203,11 +198,11 @@ namespace VroomJs
 
             CheckDisposed();
 
-            if (obj.Ptr == IntPtr.Zero)
+            if (obj.Handle == IntPtr.Zero)
                 throw new JsInteropException("wrapped V8 object is empty (IntPtr is Zero)");
 
             JsValue a = _convert.ToJsValue(value);
-            JsValue v = jsengine_set_property_value(_engine, obj.Ptr, name, a);
+            JsValue v = jsengine_set_property_value(_engine, obj.Handle, name, a);
             object res = _convert.FromJsValue(v);
             jsvalue_dispose(v);
             jsvalue_dispose(a);
@@ -226,14 +221,14 @@ namespace VroomJs
 
             CheckDisposed();
 
-            if (obj.Ptr == IntPtr.Zero)
+            if (obj.Handle == IntPtr.Zero)
                 throw new JsInteropException("wrapped V8 object is empty (IntPtr is Zero)");
 
             JsValue a = JsValue.Null; // Null value unless we're given args.
             if (args != null)
                 a = _convert.ToJsValue(args);
 
-            JsValue v = jsengine_invoke_property(_engine, obj.Ptr, name, a);
+            JsValue v = jsengine_invoke_property(_engine, obj.Handle, name, a);
             object res = _convert.FromJsValue(v);
             jsvalue_dispose(v);
             jsvalue_dispose(a);
@@ -242,6 +237,22 @@ namespace VroomJs
             if (e != null)
                 throw e;
             return res;
+        }
+
+        public void DisposeObject(JsObject obj)
+        {
+            // If the engine has already been explicitly disposed we pass Zero as
+            // the first argument because we need to free the memory allocated by
+            // "new" but not the object on the V8 heap: it has already been freed.
+            if (_disposed)
+                jsengine_dispose_object(new HandleRef(this, IntPtr.Zero), obj.Handle);
+            else
+                jsengine_dispose_object(_engine, obj.Handle);
+        }
+
+        public void Flush()
+        {
+            jsengine_force_gc();
         }
 
         #region Keep-alive management and callbacks.
@@ -364,6 +375,10 @@ namespace VroomJs
 
         bool _disposed;
 
+        public bool IsDisposed {
+            get { return _disposed; }
+        }
+
         public void Dispose()
         {
             Dispose(true);
@@ -380,8 +395,7 @@ namespace VroomJs
                 _keepalives.Clear();
             }
 
-            if (_engine.Handle != IntPtr.Zero)
-                jsengine_dispose(_engine);
+            jsengine_dispose(_engine);
         }
 
         void CheckDisposed()
