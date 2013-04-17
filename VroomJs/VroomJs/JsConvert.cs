@@ -92,7 +92,7 @@ namespace VroomJs
                     return new JsObject(_engine, v.Ptr);
 
                 case JsValueType.WrappedError:
-                return new JsException(new JsObject(_engine, v.Ptr));
+                    return new JsException(new JsObject(_engine, v.Ptr));
 
                 default:
                     throw new InvalidOperationException("unknown type code: " + v.Type);

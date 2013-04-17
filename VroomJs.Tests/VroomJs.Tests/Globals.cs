@@ -92,6 +92,27 @@ namespace VroomJs.Tests
         }
 
         [TestCase]
+        public void SimpleExpressionObject()
+        {
+            // Note that a simple "{answer:42}" at top level just returns "42", so we
+            // have to use a function and a "return" statement.
+
+            dynamic res = js.Execute("(function () { return {answer:42}})()");
+            Assert.That(res.answer, Is.EqualTo(42));
+        }
+
+        [TestCase]
+        public void ExpressionAndCall()
+        {
+            dynamic x = js.Execute(@"
+                (function () { 
+                    return {'answer':42, 'tellme':function (x) { return x+' The answer is: '+this.answer; }}
+                })()");
+            object s = x.tellme("What is the answer to ...?");
+            Assert.That(s, Is.EqualTo("What is the answer to ...? The answer is: 42"));
+        }
+
+        [TestCase]
         public void UnicodeScript()
         {
             Assert.That(js.Execute("var àbç = 12, $ùì = 30; àbç+$ùì;"), Is.EqualTo(42));
