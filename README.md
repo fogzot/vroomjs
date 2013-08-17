@@ -37,7 +37,7 @@ Create and return a Javascript object, then call a method on it:
 		// Get it and use "dynamic" to tell the compiler to use runtime binding.
 		dynamic x = js.GetVariable("x");
 		// Call the method and print the result. This will print:
-		// "What is the answer to ...? The answer is: 42"
+		// "What is the answer to ...? 42"
 		Console.WriteLine(x.tellme("What is the answer to ...?"));
 	}
 
